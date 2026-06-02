@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 自由進度表 — たし算とひき算の筆算</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+/* window.storage（Claude artifact）が無い環境用：localStorage シム */
+if (typeof window !== "undefined" && !window.storage) {
+  window.storage = {
+    async get(k) { const v = localStorage.getItem(k); return v == null ? null : { value: v }; },
+    async set(k, v) { localStorage.setItem(k, v); },
+    async delete(k) { localStorage.removeItem(k); },
+  };
+}
+
+/* ===== カラー（ポンチ絵系・現行踏襲） ===== */
+/* ===== カラー（水色=すすむ／紫=ふかめる／緑=つなげる） ===== */
+const AQUA = "#4DB6C7";          // ヘッダー帯など装飾の水色
+const BLUE = "#2E91A8";          // 進度＝落ち着いた水色
+const AMBER = ["#B79CE0", "#9B79D6", "#7E54C4", "#5E3A9E"]; // 深度4段＝紫グラデ（薄→濃／もぐるほど濃い）
+const AMBER_MAIN = "#7E54C4";    // 深度の代表色（紫）
+const GREEN = "#3FA98C";          // 伸度＝緑（線・面・帯用）
+const GREEN_TX = "#1f7a5f";       // 伸度の文字用（濃い緑＝白地で読める）
+const GRAY = "#8a97a0";
+const INK = "#2A3B40";
+const SUB = "#5b6a72";
+const NOTE_BG = "#FCF3D6";        // 黄色の注記帯
+const NOTE_BD = "#E6C34D";
+const NOTE_INK = "#8A6D1B";
+
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  ★★★ 単元データ（ここを差し替えれば 別単元の3D自由進度表になる）★★★  ║
+   ╚══════════════════════════════════════════════════════════════════╝
+   【新しい単元の作り方】
+   1) このHTMLを複製して 別フォルダに置く（例：game/shindo3d_warizan/index.html）。
+   2) この「単元データ」ブロック（UNIT〜PLAN〜SHOP_ITEMS）だけを 書き替える。
+        UNIT / BOOK / CORE … 見出し・教科書名・この単元の「核」
+        STAGES …「すすむ」軸（横）の各ステージ。n は連番、title/sub/ex。
+        DEPTH  …「ふかめる（理解の深さ）」軸（縦4段）。基本は流用でOK。
+        PLAN[stage番号][深度index(0=読む 1=つかう 2=せつめい 3=高め合う)]
+              … 各マスの goal/prep/asks/teacher/links。ready:false で「準備中」表示。
+              … 深度index2 は kind:"explain_print"（説明プリント→先生OK）運用。
+        FROM_CHAIN / NEXT_CARDS …「つなげる」裏面（どこから来て どこへ）。
+        COMMON_LINKS … 右パネルに いつも出す共通リンク。
+        SHOP_ITEMS … PBL（お買いもの）の品ぞろえ。単元に合わせて差し替え可。
+   3) ∞チャレンジ問題を増やすなら GENERATORS（ファイル下部）に登録し、
+        NEXT_CARDS のカードに gen:"キー" を指定する。
+   4) STORE_KEY（下のエンジン側）を 単元ごとに変える（保存が混ざらないように）。
+   ※ これより下の「エンジン」部分（色・立体ジオメトリ・App本体）は基本さわらない。 */
+
+const UNIT = "4. たし算とひき算の筆算";
+const BOOK = "東京書籍「新しい算数3」上巻（9時間）";
+const CORE = "位をそろえて、同じ位どうしを 計算する（十進位取り）";
+
+const STAGES = [
+  { n: 1, title: "たし算", sub: "くり上がり", ex: "365 + 457" },
+  { n: 2, title: "ひき算", sub: "くり下がり", ex: "512 − 348" },
+  { n: 3, title: "0をこえる", sub: "波及のくり下がり", ex: "402 − 175" },
+  { n: 4, title: "4けたの計算", sub: "たし算・ひき算", ex: "2456 + 3897" },
+  { n: 5, title: "たしかめ算", sub: "・まとめ", ex: "答えのたしかめ" },
+];
+const DEPTH = [
+  { lv: 1, name: "読む", desc: "音読→線引き", badge: "📖", badgeName: "読破" },
+  { lv: 2, name: "つかう", desc: "問題をとく", badge: "✏️", badgeName: "できた" },
+  { lv: 3, name: "せつめい", desc: "なぜ？図で", badge: "💡", badgeName: "説明できた" },
+  { lv: 4, name: "高め合う", desc: "友だちと", badge: "🤝", badgeName: "高め合い" },
+];
+
+/* つなげる：系統チェーン（解説用） */
+const FROM_CHAIN = [
+  { grade: "1年", label: "10のまとまり・10といくつ", think: "「10のまとまり」で 数を見る" },
+  { grade: "2年", label: "2けたの たし算・ひき算の筆算", think: "位をそろえて 同じ位どうし／くり上がり・くり下がり" },
+];
+/* つなげる先カード（実URL差し込み済み。後で追加分は url:null） */
+const NEXT_CARDS = [
+  {
+    key: "big", grade: "3年", title: "大きい数のしくみ",
+    think: "位取りを 万・億へ ひろげる（同じ十進の考え）",
+    video: null,
+    links: [{ t: "eboard：大きい数（後で）", url: null }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
+    gen: null, genLabel: "大きい数を 読む（準備中）",
+  },
+  {
+    key: "mul", grade: "3年", title: "かけ算の筆算",
+    think: "★考え方がかわる：位ごとに分けて計算して たす（部分積）。右にそろえる",
+    video: null,
+    links: [{ t: "eboard：かけ算の筆算（後で）", url: null }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
+    gen: null, genLabel: "2けた×1けた（準備中）",
+  },
+  {
+    key: "dec", grade: "3年", title: "小数のたし算",
+    think: "小数点をそろえる＝位をそろえる（この単元と 同じ考え！）",
+    video: { t: "NHK さんすうレスキュー！ 小数(3年)：右ぞろえで失敗…位をそろえる", url: "https://edu.web.nhk/school/watch/bangumi/?das_id=D0005160097_00000" },
+    links: [{ t: "eboard：小数の引き算(筆算)", url: "https://www.eboard.jp/content/225/v/6/" }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
+    gen: "decimalAdd", genLabel: "小数のたし算（無限）",
+  },
+  {
+    key: "g4", grade: "4年", title: "整数の計算の定着",
+    think: "計算の力を 確かなものに（4年へ）",
+    video: null,
+    links: [{ t: "eboard：算数 単元一覧", url: "https://www.eboard.jp/list/7/" }],
+    gen: null, genLabel: "（準備中）",
+  },
+];
+
+/* ===== 共通の教材リンク（右パネルにいつも出す） ===== */
+const COMMON_LINKS = [
+  { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" },
+  { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" },
+];
+
+/* ===== やるべきこと：PLAN[stage][lv] =====
+   全5ステージ × 全4Lv（0:読む 1:つかう 2:せつめい 3:高め合う）を作り込み済み。
+   Lv2(index2 せつめい)は「説明プリント→先生OK」のプリント運用（kind:"explain_print"）。
+   ready:false にすると、そのマスは「準備中」表示にフォールバックする（横展開時の未作成用）。 */
+const PLAN = {
+  1: { // たし算（くり上がり）＝作り込み
+    0: { ready: true, kind: "read",
+      goal: "教科書を 音読し、大事なことば（位・同じ位どうし・くり上がり）に 線を引ける。",
+      prep: ["教科書", "赤えんぴつ", "ノート"],
+      asks: ["どの ことばが 大事だと思う？", "「位」「くり上がり」は どこに 出てくる？", "線を引いた ことばを 使って 1文で 言える？"],
+      teacher: ["大事な語に 自分で 線を引けているか", "用語を 自分のことばで 言いかえられるか"],
+      links: [{ t: "教科書", url: null }],
+    },
+    1: { ready: true, kind: "use",
+      goal: "365+457・478+256 など くり上がりの たし算が ひっ算で 正しく できる。",
+      prep: ["教科書", "計算ドリル 19・20", "ノート"],
+      asks: ["一の位から 計算した？", "くり上がりの 小さい1を 書いた？", "答えの 位は そろっている？", "まちがえやすいのは どこ？ なぜ そう思う？"],
+      teacher: ["一の位から 順に 計算しているか", "くり上がりの 処理が 正しいか"],
+      links: [{ t: "計算ドリル 19・20", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    2: { ready: true, kind: "explain_print", // ★プリント運用
+      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
+      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKが もらえたら このマスを ぬる"],
+      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      asks: ["小さい『1』は ほんとうは いくつ？（1？10？）", "その『10』は なんの位に いく？", "ことばだけでなく 図でも 言える？"],
+      teacher: ["13を 10と3に 分けて とらえているか", "小さい1を“10”と 説明できるか", "図（ブロック・位取り表）と 式・ことばを 対応づけているか"],
+      links: [{ t: "📄 説明プリント①たし算くり上がり（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    3: { ready: true, kind: "together",
+      goal: "くり上がりの 考え方を 友だちと 説明し合い、よりよい 言い方に できる。",
+      prep: ["自分の 説明プリント", "ノート"],
+      asks: ["友だちの 説明で なるほど と思った所は？", "自分の 説明に 足したい ことばは？", "どちらの 図が わかりやすい？ なぜ？"],
+      teacher: ["友だちの説明を 聞いて 取り入れているか", "より分かりやすい 表現に 高めているか"],
+      links: [{ t: "（ペアで 説明し合う）", url: null }],
+    },
+  },
+
+  2: { // ひき算（くり下がり）
+    0: { ready: true, kind: "read",
+      goal: "教科書を 音読し、大事なことば（くり下がり・10をかりる）に 線を引ける。",
+      prep: ["教科書", "赤えんぴつ", "ノート"],
+      asks: ["「くり下がり」は どこに 出てくる？", "「10をかりる」とは どういうこと？", "線を引いた ことばで 1文 言える？"],
+      teacher: ["大事な語に 線を引けているか", "用語を 自分のことばで 言えるか"],
+      links: [{ t: "教科書", url: null }],
+    },
+    1: { ready: true, kind: "use",
+      goal: "512−348・623−159 など くり下がりの ひき算が ひっ算で 正しく できる。",
+      prep: ["教科書", "計算ドリル 21", "ノート"],
+      asks: ["一の位から 計算した？", "ひけない時 上から 10を かりた？", "かりたら 上の位は 1 へった？", "まちがえやすいのは どこ？ どう 気をつける？"],
+      teacher: ["くり下がりの 処理が 正しいか", "上の位を 1へらしているか"],
+      links: [{ t: "計算ドリル 21", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    2: { ready: true, kind: "explain_print",
+      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
+      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
+      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      asks: ["なぜ 上の位から 10を かりるの？", "かりた10は どこで つかう？", "図で 「10をばらす」を 表せる？"],
+      teacher: ["「10をかりて 上は1へる」を 説明できるか", "図と 式・ことばを 対応づけているか"],
+      links: [{ t: "📄 説明プリント②ひき算くり下がり（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    3: { ready: true, kind: "together",
+      goal: "くり下がりの 考え方を 友だちと 説明し合い、よりよい 言い方に できる。",
+      prep: ["自分の 説明プリント", "ノート"],
+      asks: ["友だちの 説明の よい所は？", "自分の 説明に 足したい ことばは？", "つまずきやすい所は どこ？"],
+      teacher: ["友だちの説明を 取り入れているか", "表現を 高めているか"],
+      links: [{ t: "（ペアで 説明し合う）", url: null }],
+    },
+  },
+
+  3: { // 0をこえるくり下がり（波及）
+    0: { ready: true, kind: "read",
+      goal: "教科書を 音読し、大事なことば（0をこえる・百からかりる）に 線を引ける。",
+      prep: ["教科書", "赤えんぴつ", "ノート"],
+      asks: ["十の位が 0の時 どうする？", "「百からかりる」は どういうこと？", "線を引いた ことばで 言える？"],
+      teacher: ["大事な語に 線を引けているか", "用語を 自分のことばで 言えるか"],
+      links: [{ t: "教科書", url: null }],
+    },
+    1: { ready: true, kind: "use",
+      goal: "402−175・1000−268 など 0をこえる くり下がりが 正しく できる。",
+      prep: ["教科書", "計算ドリル 22", "ノート"],
+      asks: ["十の位が 0の時 どこから かりた？", "百→十→一へ じゅんに わたせた？", "答えの たしかめは した？", "いちばん むずかしいのは どこ？ なぜ？"],
+      teacher: ["波及の くり下がりが 正しいか", "順に かりられているか"],
+      links: [{ t: "計算ドリル 22", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    2: { ready: true, kind: "explain_print",
+      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
+      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
+      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      asks: ["十が 0だと なぜ そのまま かりられない？", "百を くずすと 十は いくつに なる？", "図で 「百→十→一」を 表せる？"],
+      teacher: ["百からかりて 十・一へ わたす流れを 説明できるか", "図と 式を 対応づけているか"],
+      links: [{ t: "📄 説明プリント③0をこえる（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    3: { ready: true, kind: "together",
+      goal: "0をこえる くり下がりの 考え方を 友だちと 説明し合い、高め合える。",
+      prep: ["自分の 説明プリント", "ノート"],
+      asks: ["みんなが まちがえやすい所は？", "どう 説明すると 伝わる？", "自分の 説明に 足したい ことばは？"],
+      teacher: ["つまずきを 友だちと 教え合えているか", "表現を 高めているか"],
+      links: [{ t: "（ペアで 説明し合う）", url: null }],
+    },
+  },
+
+  4: { // 4けたの計算
+    0: { ready: true, kind: "read",
+      goal: "教科書を 音読し、大事なことば（4けた・けたがふえても同じ）に 線を引ける。",
+      prep: ["教科書", "赤えんぴつ", "ノート"],
+      asks: ["3けたと 4けた、何が ちがう？", "やり方は 同じ？ ちがう？", "線を引いた ことばで 言える？"],
+      teacher: ["大事な語に 線を引けているか", "「同じやり方」に 気づいているか"],
+      links: [{ t: "教科書", url: null }],
+    },
+    1: { ready: true, kind: "use",
+      goal: "2456+3897・5208−1639 など 4けたの たし算・ひき算が 正しく できる。",
+      prep: ["教科書", "計算ドリル 23", "ノート"],
+      asks: ["一の位から 順に 計算した？", "くり上がり・くり下がりは 正しい？", "けたが ふえても 同じだった？", "3けたと くらべて どこが 同じ？ なぜ そう言える？"],
+      teacher: ["4けたでも 手順が 正しいか", "位を そろえているか"],
+      links: [{ t: "計算ドリル 23", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    2: { ready: true, kind: "explain_print",
+      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
+      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
+      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      asks: ["なぜ けたが ふえても 同じやり方？", "大切なのは 何を そろえること？", "「いつでも同じ」を ことばで 言える？"],
+      teacher: ["「位をそろえれば 同じ」と 一般化して 説明できるか", "3けたとの 共通点を 言えるか"],
+      links: [{ t: "📄 説明プリント④4けた（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    3: { ready: true, kind: "together",
+      goal: "「けたが ふえても 同じ」を 友だちと 説明し合い、考えを 高め合える。",
+      prep: ["自分の 説明プリント", "ノート"],
+      asks: ["友だちは どう 説明した？", "もっと 大きい数でも 同じ？", "自分の 説明に 足したい ことばは？"],
+      teacher: ["一般化を 友だちと 共有できているか", "表現を 高めているか"],
+      links: [{ t: "（ペアで 説明し合う）", url: null }],
+    },
+  },
+
+  5: { // たしかめ算・まとめ
+    0: { ready: true, kind: "read",
+      goal: "教科書を 音読し、大事なことば（たしかめ算）に 線を引ける。",
+      prep: ["教科書", "赤えんぴつ", "ノート"],
+      asks: ["「たしかめ算」とは 何？", "たし算と ひき算は どんな 関係？", "線を引いた ことばで 言える？"],
+      teacher: ["大事な語に 線を引けているか", "たし算とひき算の関係に 気づいているか"],
+      links: [{ t: "教科書", url: null }],
+    },
+    1: { ready: true, kind: "use",
+      goal: "答えを ぎゃくの計算で たしかめる（たしかめ算）が できる。",
+      prep: ["教科書", "計算ドリル 24（たしかめテスト）", "ノート"],
+      asks: ["ひき算の 答えは どう たしかめる？", "たし算の 答えは どう たしかめる？", "たしかめて 合っていた？", "たしかめが 役に立つのは どんな時？ なぜ？"],
+      teacher: ["ぎゃくの計算で たしかめられるか", "計算の まちがいに 気づけるか"],
+      links: [{ t: "計算ドリル 24（たしかめテスト）", url: null }, { t: "計算ドリル 25（文章題）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    2: { ready: true, kind: "explain_print",
+      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
+      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
+      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      asks: ["なぜ たしかめ算で 正しいと いえる？", "たし算と ひき算は どう つながる？", "ことばで 説明できる？"],
+      teacher: ["たし算とひき算の関係で 説明できるか", "なぜ確かめになるか 言えるか"],
+      links: [{ t: "📄 説明プリント⑤たしかめ算（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+    },
+    3: { ready: true, kind: "together",
+      goal: "たしかめ算の しかたを 友だちと 説明し合い、まとめを 高め合える。",
+      prep: ["自分の 説明プリント", "ノート"],
+      asks: ["友だちの たしかめ方の よい所は？", "どんな時 たしかめが 役立つ？", "単元の まとめを ひとことで 言うと？"],
+      teacher: ["たしかめの よさを 共有できているか", "単元を まとめられるか"],
+      links: [{ t: "（ペアで 説明し合う）", url: null }],
+    },
+  },
+};
+
+/* ===== PBL：ショッピングモールで お買いもの大さくせん ===== */
+const SHOP_ITEMS = [
+  { id: "game", emoji: "🎮", name: "ゲームソフト", price: 5980 },
+  { id: "tama", emoji: "🥚", name: "たまごっちUni", price: 6578 },
+  { id: "pochette", emoji: "🎀", name: "ショルダーポシェット", price: 2480 },
+  { id: "watch", emoji: "⌚", name: "キッズ腕時計", price: 3300 },
+  { id: "necklace", emoji: "📿", name: "アクセサリー（ネックレス）", price: 1280 },
+  { id: "nail", emoji: "💅", name: "はがせるマニキュア", price: 880 },
+  { id: "seal", emoji: "✨", name: "ぷっくりシール(6まい)", price: 528 },
+  { id: "sealbook", emoji: "📒", name: "シール帳", price: 1100 },
+  { id: "bunbo", emoji: "✏️", name: "かわいい文ぼうぐセット", price: 770 },
+  { id: "okashi", emoji: "🍬", name: "ゆめかわ お菓子", price: 432 },
+];
+
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  ↓↓↓ ここから下は「エンジン」：基本さわらない（色・立体・App本体）↓↓↓  ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+
+/* ===== 立体（アイソメ） ===== */
+const CW = 130, CH = 54, GX = 4, HEADER = 58, DEEP = 120;
+const N = STAGES.length;
+const FW = N * CW + (N - 1) * GX;
+const FH = HEADER + DEPTH.length * CH;
+const ZX = 0.62, ZY = -0.45;
+const px = (x, y, z) => ({ left: x + z * ZX, top: y + z * ZY });
+const OX = 180, OY = 116;
+// 実際の描画域（左の深度ラベル px(-150) 〜 右の奥行き/ラベルまで）。これで縮小率を計算する
+const DRAW_W = 1180, DRAW_H = 470;
+const wrap = (p) => ({ left: OX + p.left, top: OY + p.top });
+
+const STORE_KEY = "shindo3d_hissan_v6"; // ★単元ごとに変える（別単元へ流用時は名前を変えて 保存の混在を防ぐ）
+
+/* window.storage が無い環境でも落ちない安全ラッパ */
+const hasStore = typeof window !== "undefined" && window.storage &&
+  typeof window.storage.get === "function";
+const store = {
+  async get(k) { if (!hasStore) return null; try { return await window.storage.get(k); } catch (e) { return null; } },
+  async set(k, v) { if (!hasStore) return; try { await window.storage.set(k, v); } catch (e) {} },
+  async del(k) { if (!hasStore) return; try { await window.storage.delete(k); } catch (e) {} },
+};
+
+function App() {
+  const [openStage, setOpenStage] = useState(1);
+  const [openLv, setOpenLv] = useState(0);       // どのマスを開いているか（既定はLv1「読む」＝学習の入口）
+  const [done, setDone] = useState({});           // "s-k": true
+  const [reached, setReached] = useState({});      // s: true
+  const [showBack, setShowBack] = useState(false); // つなげる裏面
+  const [activeCard, setActiveCard] = useState("dec"); // つなげる先カード
+  const [showPBL, setShowPBL] = useState(false);   // PBL画面
+  const [budget, setBudget] = useState(5000);       // 予算（自分で設定）
+  const [cart, setCart] = useState({});             // {itemId: 個数}
+  const [loaded, setLoaded] = useState(false);
+
+  // 立体シーンをコンテナ幅に合わせて自動縮小（はみ出し防止）
+  const sceneBoxRef = useRef(null);
+  const [fit, setFit] = useState(1);
+  useEffect(() => {
+    const el = sceneBoxRef.current;
+    if (!el) return;
+    const calc = () => {
+      const w = el.clientWidth;
+      setFit(Math.min(1, w / DRAW_W));
+    };
+    calc();
+    let ro;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(calc);
+      ro.observe(el);
+    } else {
+      window.addEventListener("resize", calc);
+    }
+    return () => { if (ro) ro.disconnect(); else window.removeEventListener("resize", calc); };
+  }, []);
+
+  /* ===== 永続保存：読み込み ===== */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const r = await store.get(STORE_KEY);
+      if (alive && r && r.value) {
+        try {
+          const v = JSON.parse(r.value);
+          setDone(v.done || {});
+          setReached(v.reached || {});
+        } catch (e) { /* 壊れていたら無視 */ }
+      }
+      if (alive) setLoaded(true);
+    })();
+    return () => { alive = false; };
+  }, []);
+  /* ===== 永続保存：書き込み ===== */
+  useEffect(() => {
+    if (!loaded) return;
+    store.set(STORE_KEY, JSON.stringify({ done, reached }));
+  }, [done, reached, loaded]);
+
+  const toggleDone = (s, k) => setDone((d) => ({ ...d, [`${s}-${k}`]: !d[`${s}-${k}`] }));
+  const toggleReached = (s) => setReached((r) => ({ ...r, [s]: !r[s] }));
+  const resetAll = async () => {
+    setDone({}); setReached({});
+    await store.del(STORE_KEY);
+  };
+
+  const stagesReached = Object.values(reached).filter(Boolean).length;
+
+  const st = STAGES.find((s) => s.n === openStage);
+  const plan = (PLAN[openStage] && PLAN[openStage][openLv]) ? PLAN[openStage][openLv] : { ready: false };
+  const showGuide = openLv != null;
+  // 開いているステージの 4バッジが そろったか（そろったら『ステージ制覇』ボタンを 光らせて うながす）
+  const allFourDone = !!st && DEPTH.every((_, k) => done[`${st.n}-${k}`]);
+  const readyToClear = allFourDone && !reached[st.n];
+
+  // 箱頂点
+  const A = px(-20, -20, 0), B = px(FW + 20, -20, 0), Cc = px(FW + 20, FH + 20, 0), D = px(-20, FH + 20, 0);
+  const A2 = px(-20, -20, DEEP), B2 = px(FW + 20, -20, DEEP), C2 = px(FW + 20, FH + 20, DEEP), D2 = px(-20, FH + 20, DEEP);
+
+  // 取得済みバッジ
+  const badgesByStage = (s) => DEPTH.map((d, k) => ({ ...d, got: !!done[`${s}-${k}`] }));
+
+  return (
+    <div style={{
+      fontFamily: "'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif",
+      background: "radial-gradient(1200px 700px at 78% -8%, #E6F5F7 0%, #EEF6F7 45%, #E8F0F1 100%)",
+      minHeight: "100vh", color: INK, padding: "16px 18px 26px", boxSizing: "border-box",
+    }}>
+      <style>{`@keyframes popUp{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes cellPop{0%{transform:scale(1)}45%{transform:scale(1.07)}100%{transform:scale(1)}}
+@keyframes readyPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,161,0,.55)}50%{box-shadow:0 0 0 7px rgba(232,161,0,0)}}`}</style>
+      {/* ヘッダー */}
+      <div style={{ display: "flex", alignItems: "center", gap: 13, flexWrap: "wrap" }}>
+        <div style={{ width: 46, height: 46, borderRadius: 12, background: BLUE, color: "#fff", fontWeight: 900, fontSize: 16, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 5px 0 rgba(46,145,168,.3)" }}>3D</div>
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: BLUE, lineHeight: 1.05 }}>3D 自由進度表</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginTop: 2 }}>たんげん：<span style={{ color: BLUE }}>{UNIT}</span></div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: SUB, marginTop: 1 }}>{BOOK}　／　核：{CORE}</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: SUB, textAlign: "right", lineHeight: 1.5 }}>
+            <span style={{ color: BLUE }}>━</span>すすむ　<span style={{ color: AMBER_MAIN }}>━</span>ふかめる（理解の深さ）　<span style={{ color: GREEN_TX }}>━</span>つなげる
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => { setShowPBL(true); setShowBack(false); }} style={{
+              fontSize: 11.5, fontWeight: 900, cursor: "pointer", padding: "5px 13px", borderRadius: 13,
+              color: "#fff", background: stagesReached >= N ? "#E8A100" : AMBER_MAIN, border: "none",
+              boxShadow: stagesReached >= N ? "0 0 0 3px #FFE39A" : "0 2px 0 rgba(217,131,36,.3)",
+            }}>🛒 お買いもの大さくせん{stagesReached >= N ? " ✦" : ""}</button>
+            <button onClick={() => { setShowBack((v) => !v); }} style={{
+              fontSize: 11.5, fontWeight: 900, cursor: "pointer", padding: "5px 13px", borderRadius: 13,
+              color: "#fff", background: GREEN, border: "none", boxShadow: "0 2px 0 rgba(63,169,140,.3)",
+            }}>{showBack ? "◀ おもてに もどる" : "つなげる（うらを見る）↗"}</button>
+            <button onClick={resetAll} style={{ fontSize: 11, fontWeight: 800, cursor: "pointer", padding: "5px 11px", borderRadius: 13, color: SUB, background: "#fff", border: "1.5px solid #cdd8dd" }}>リセット</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== 上段：立体ビュー ===== */}
+      <div ref={sceneBoxRef} style={{
+        marginTop: 10, height: DRAW_H * fit, borderRadius: 16, border: "1px solid #e1e8ea",
+        background: "linear-gradient(180deg,#FBFEFE,#E9F4F6)", position: "relative", overflow: "hidden", perspective: 1500,
+      }}>
+        {/* fitスケール用ラッパ（実描画域 DRAW_W×DRAW_H を中央に置いて縮小） */}
+        <div style={{ position: "absolute", left: "50%", top: 0, width: DRAW_W, height: DRAW_H, transform: `translateX(-50%) scale(${fit})`, transformOrigin: "top center" }}>
+        {/* 回転ステージ（C案：showBackでrotateY） */}
+        <div style={{
+          position: "absolute", inset: 0, transformStyle: "preserve-3d",
+          transform: showBack ? "rotateY(-180deg) rotateX(-8deg)" : "rotateY(0deg)",
+          transition: "transform .8s cubic-bezier(.3,.7,.2,1)",
+        }}>
+          {/* ---------- おもて面 ---------- */}
+          <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}>
+            <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+              {[[A2, B2], [B2, C2], [C2, D2], [D2, A2], [A, A2], [B, B2], [Cc, C2], [D, D2]].map(([p, q], i) => (
+                <line key={i} x1={OX + p.left} y1={OY + p.top} x2={OX + q.left} y2={OY + q.top} stroke="#c2d2d8" strokeWidth="1.6" strokeDasharray="3,4" />
+              ))}
+              {[[A, B], [B, Cc], [Cc, D], [D, A]].map(([p, q], i) => (
+                <line key={"f" + i} x1={OX + p.left} y1={OY + p.top} x2={OX + q.left} y2={OY + q.top} stroke="#9fb6bd" strokeWidth="2" />
+              ))}
+              {(() => {
+                // 原点を箱の左上の少し外に。終点は枠内に収める
+                const o = px(-46, -46, 0);
+                const ox = px(FW + 14, -46, 0);          // すすむ＝右（横）
+                const oy = px(-46, FH + 22, 0);           // ふかめる＝下（縦）
+                const oz = px(-46, -46, DEEP * 0.5);      // つなげる＝奥（短め）
+                const L = (p, q, col) => <line x1={OX + p.left} y1={OY + p.top} x2={OX + q.left} y2={OY + q.top} stroke={col} strokeWidth="3.5" strokeLinecap="round" markerEnd={`url(#ah-${col.replace('#','')})`} />;
+                const mk = (col) => <marker id={`ah-${col.replace('#','')}`} markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" refX="4" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill={col} /></marker>;
+                return (<>
+                  <defs>{mk(BLUE)}{mk(AMBER_MAIN)}{mk(GREEN)}</defs>
+                  {L(o, ox, BLUE)}{L(o, oy, AMBER_MAIN)}{L(o, oz, GREEN)}
+                </>);
+              })()}
+            </svg>
+            {(() => {
+              const labelShadow = "0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 1px 1px 2px #fff";
+              const ox = wrap(px(FW - 82, -64, 0));        // すすむ：線の上・右寄り
+              const oy = wrap(px(-122, FH + 12, 0));        // ふかめる：線の左下
+              const oz = wrap(px(-30, -44, DEEP * 0.5));    // つなげる：短い線の先
+              const base = { position: "absolute", fontSize: 13, fontWeight: 900, whiteSpace: "nowrap", textShadow: labelShadow };
+              return (<>
+                <div style={{ ...base, ...ox, color: BLUE }}>すすむ →</div>
+                <div style={{ ...base, ...oy, color: AMBER_MAIN }}>ふかめる ↓</div>
+                <div style={{ ...base, ...oz, color: GREEN_TX }}>つなげる ↗</div>
+              </>);
+            })()}
+            {/* 上面・右側面 */}
+            <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+              {(() => { const tl = px(-20, -20, 0), tr = px(FW + 20, -20, 0), tr2 = px(FW + 20, -20, DEEP), tl2 = px(-20, -20, DEEP);
+                return <polygon points={[tl, tr, tr2, tl2].map(p => `${OX + p.left},${OY + p.top}`).join(" ")} fill="rgba(58,123,213,.06)" stroke="#bcd0d7" strokeWidth="1.4" />; })()}
+              {(() => { const a = px(FW + 20, -20, 0), b = px(FW + 20, FH + 20, 0), c = px(FW + 20, FH + 20, DEEP), d = px(FW + 20, -20, DEEP);
+                return <polygon points={[a, b, c, d].map(p => `${OX + p.left},${OY + p.top}`).join(" ")} fill="rgba(120,140,150,.10)" stroke="#bcd0d7" strokeWidth="1.4" />; })()}
+            </svg>
+
+            {/* ステージ見出し */}
+            {STAGES.map((s, i) => {
+              const p = wrap(px(i * (CW + GX), 0, 0));
+              const isOpen = openStage === s.n;
+              const built = !!(PLAN[s.n] && PLAN[s.n][0] && PLAN[s.n][0].ready);
+              return (
+                <button key={s.n} onClick={() => { setOpenStage(s.n); setOpenLv(0); }} style={{
+                  position: "absolute", ...p, width: CW, height: HEADER - 6,
+                  background: isOpen ? BLUE : "#EAF2FC", color: isOpen ? "#fff" : INK,
+                  border: `2px solid ${BLUE}`, borderRadius: 8, cursor: "pointer", padding: "5px 8px", boxSizing: "border-box", textAlign: "left",
+                  boxShadow: isOpen ? "0 4px 12px rgba(58,123,213,.35)" : "none",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 19, height: 19, borderRadius: "50%", background: isOpen ? "#fff" : BLUE, color: isOpen ? BLUE : "#fff", fontSize: 10.5, fontWeight: 900, display: "grid", placeItems: "center", flex: "none" }}>{s.n}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 900, lineHeight: 1.0 }}>{s.title}<br /><span style={{ fontSize: 8.5, opacity: .85, fontWeight: 800 }}>{s.sub}</span></span>
+                  </div>
+                  <div style={{ fontSize: 8, fontWeight: 800, color: isOpen ? "#cfe0ff" : (built ? GREEN : SUB), textAlign: "right", marginTop: 1 }}>{built ? "✓つくり込み" : "準備中"}</div>
+                </button>
+              );
+            })}
+
+            {/* 深度マス */}
+            {STAGES.map((s, i) =>
+              DEPTH.map((d, k) => {
+                const p = wrap(px(i * (CW + GX), HEADER + k * CH, 0));
+                const isDone = !!done[`${s.n}-${k}`];
+                const isOpenCell = openStage === s.n && openLv === k;
+                return (
+                  <div key={`${s.n}-${k}-${isDone ? 1 : 0}`} onClick={() => { setOpenStage(s.n); setOpenLv(k); }} style={{
+                    position: "absolute", ...p, width: CW, height: CH - 6,
+                    background: isDone ? AMBER[k] : "#fff", border: `2px solid ${AMBER[k]}`,
+                    outline: isOpenCell ? `3px solid ${AMBER[k]}` : "none",
+                    borderRadius: 7, cursor: "pointer", boxSizing: "border-box", display: "flex", alignItems: "center", gap: 2,
+                    animation: isDone ? "cellPop .3s ease" : "none",
+                  }}>
+                    <span style={{ width: 7, height: "100%", background: AMBER[k], borderRadius: "5px 0 0 5px", flex: "none" }} />
+                    <span style={{ fontSize: 12, flex: "none", marginLeft: 1 }}>{d.badge}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 900, color: isDone ? "#fff" : AMBER[k], flex: 1, whiteSpace: "nowrap", overflow: "hidden", letterSpacing: "-0.3px" }}>{d.name}</span>
+                    <span style={{ fontSize: 8, fontWeight: 800, color: isDone ? "#fff" : AMBER[k], paddingRight: 4, flex: "none" }}>L{d.lv}</span>
+                  </div>
+                );
+              })
+            )}
+            {/* 深度ラベル左 */}
+            {DEPTH.map((d, k) => {
+              const p = wrap(px(-150, HEADER + k * CH, 0));
+              return (
+                <div key={"dl" + k} style={{ position: "absolute", ...p, width: 140, height: CH - 6, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>{d.badge}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 900 }}>Lv{d.lv} {d.name}</span>
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: SUB, marginLeft: 20 }}>{d.desc}</span>
+                </div>
+              );
+            })}
+            <div style={{ position: "absolute", right: 14, bottom: 10, fontSize: 10, fontWeight: 800, color: SUB }}>マスを タップ → 下に「やるべきこと」</div>
+          </div>
+
+          {/* ---------- うら面（つなげる） ---------- */}
+          <div style={{
+            position: "absolute", inset: 0, backfaceVisibility: "hidden",
+            transform: "rotateY(180deg)", background: "linear-gradient(180deg,#F3FBF7,#e6f4ee)",
+            padding: "16px 20px", boxSizing: "border-box", display: "flex", flexDirection: "column",
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: GREEN_TX }}>↗ つなげる（伸度）：この単元は どこから来て、どこへ つながる？</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: SUB, marginTop: 2 }}>カードを えらぶと、下に くわしく（系統の話・動画・リンク・チャレンジ問題）が出るよ</div>
+
+            {/* どこから（系統） */}
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10.5, fontWeight: 900, color: GRAY }}>← どこから：</span>
+              {FROM_CHAIN.map((c, i) => (
+                <span key={i} title={c.think} style={{ fontSize: 10.5, fontWeight: 800, color: "#5b6a72", background: "#fff", border: "1.5px dashed #9aa7ad", borderRadius: 10, padding: "3px 9px" }}>
+                  {c.grade}：{c.label}
+                </span>
+              ))}
+              <span style={{ fontSize: 11, fontWeight: 900, color: BLUE, background: "rgba(58,123,213,.1)", border: `2px solid ${BLUE}`, borderRadius: 10, padding: "3px 10px" }}>● 3年：この単元</span>
+            </div>
+
+            {/* つなげる先カード */}
+            <div style={{ marginTop: 12, fontSize: 10.5, fontWeight: 900, color: GREEN_TX }}>↗ この先（カードを えらぶ）</div>
+            <div style={{ marginTop: 7, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {NEXT_CARDS.map((c) => {
+                const on = activeCard === c.key;
+                return (
+                  <button key={c.key} onClick={() => setActiveCard(c.key)} style={{
+                    flex: "1 1 160px", minWidth: 150, textAlign: "left", cursor: "pointer",
+                    background: on ? "#fff" : "#ffffffcc", border: `2px solid ${on ? GREEN : "#bfe0d2"}`,
+                    borderRadius: 12, padding: "10px 12px", boxShadow: on ? "0 4px 14px rgba(29,158,117,.25)" : "none",
+                  }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, color: GREEN_TX }}>{c.grade}</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: INK, lineHeight: 1.15 }}>{c.title}</div>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: SUB, marginTop: 3, lineHeight: 1.35 }}>{c.think}</div>
+                    {c.gen && <div style={{ marginTop: 5, display: "inline-block", fontSize: 9, fontWeight: 900, color: "#fff", background: GREEN, borderRadius: 8, padding: "1px 8px" }}>∞ チャレンジ問題あり</div>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: "auto", fontSize: 10, fontWeight: 700, color: SUB }}>★かけ算だけ 考え方がかわる：位ごとに分けてたす（右にそろえる）／たし算・ひき算・小数は「位をそろえる」で同じ</div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      {/* ===== 下段 ===== */}
+      {!showBack && showGuide && (
+        <div key={`guide-${openStage}-${openLv}`} style={{ display: "flex", gap: 14, marginTop: 12, alignItems: "flex-start", flexWrap: "wrap", animation: "popUp .32s cubic-bezier(.2,.8,.2,1)" }}>
+          {/* 左＝学習ガイド */}
+          <div style={{ flex: "1 1 420px", minWidth: 360, border: `2px solid ${plan.ready ? AMBER[openLv] : "#cdd8dd"}`, borderRadius: 14, background: "#fff", overflow: "hidden" }}>
+            <div style={{ background: plan.ready ? AMBER[openLv] : "#cdd8dd", color: "#fff", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>{DEPTH[openLv].badge}</span>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 800, opacity: .9 }}>ステージ{st.n}「{st.title}{st.sub}」</div>
+                <div style={{ fontSize: 16, fontWeight: 900 }}>ふかめる Lv{DEPTH[openLv].lv}：{DEPTH[openLv].name}</div>
+              </div>
+            </div>
+
+            {(plan.ready) ? (
+              <div style={{ padding: "11px 13px" }}>
+                {/* 達成条件 */}
+                <SectionTitle color={BLUE} icon="🎯" text="これが できたら クリア（達成条件）" />
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: INK, background: "#F4F8FE", border: `1.5px solid ${BLUE}`, borderRadius: 9, padding: "9px 12px", lineHeight: 1.55 }}>{plan.goal}</div>
+
+                {/* プリント運用フロー（せつめい） */}
+                {plan.flow && (
+                  <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {plan.flow.map((f, i) => (
+                      <div key={i} style={{ flex: "1 1 150px", fontSize: 11.5, fontWeight: 800, color: "#7a2f54", background: "#FCEEF4", border: "1.5px solid #d98cb0", borderRadius: 9, padding: "7px 9px", lineHeight: 1.4 }}>{f}</div>
+                    ))}
+                  </div>
+                )}
+                <SectionTitle color={SUB} icon="🎒" text="じゅんびするもの" mt />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {plan.prep.map((x, i) => <span key={i} style={{ fontSize: 11, fontWeight: 800, color: "#4a5560", background: "#f1f5f7", border: "1.4px solid #d3dde1", borderRadius: 11, padding: "3px 10px" }}>{x}</span>)}
+                </div>
+
+                {/* 問いかけサポート */}
+                <SectionTitle color={AMBER_MAIN} icon="💭" text="考えを ふかめる 問いかけ（自分に きいてみよう）" mt />
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {plan.asks.map((q, i) => (
+                    <div key={i} style={{ fontSize: 12.5, fontWeight: 700, color: INK, background: "#F3EDFB", borderLeft: `3px solid ${AMBER_MAIN}`, borderRadius: 6, padding: "6px 10px", lineHeight: 1.45 }}>{q}</div>
+                  ))}
+                </div>
+
+                {/* バッジ＆クリア */}
+                <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderTop: "1px dashed #d3dde1", paddingTop: 12 }}>
+                  <button onClick={() => toggleDone(st.n, openLv)} style={{
+                    flex: "1 1 200px", fontSize: 14, fontWeight: 900, cursor: "pointer",
+                    color: done[`${st.n}-${openLv}`] ? "#fff" : AMBER[openLv],
+                    background: done[`${st.n}-${openLv}`] ? AMBER[openLv] : "#fff",
+                    border: `2px solid ${AMBER[openLv]}`, borderRadius: 10, padding: "10px 0",
+                  }}>{done[`${st.n}-${openLv}`] ? `✓ ${DEPTH[openLv].badge} ${DEPTH[openLv].badgeName} バッジ ゲット！` : `できたら ぬる（${DEPTH[openLv].badge}${DEPTH[openLv].badgeName}）`}</button>
+                </div>
+
+                {/* バッジ一覧（二層） */}
+                <div style={{ marginTop: 12 }}>
+                  <SectionTitle color={INK} icon="🏅" text="このステージの バッジ" />
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    {badgesByStage(st.n).map((b, k) => (
+                      <div key={k} style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                        opacity: b.got ? 1 : 0.32, filter: b.got ? "none" : "grayscale(1)",
+                      }}>
+                        <div style={{ width: 42, height: 42, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 20, background: b.got ? AMBER[k] + "22" : "#eef2f4", border: `2px solid ${b.got ? AMBER[k] : "#cdd8dd"}` }}>{b.badge}</div>
+                        <span style={{ fontSize: 8.5, fontWeight: 800, color: b.got ? AMBER[k] : SUB }}>{b.badgeName}</span>
+                      </div>
+                    ))}
+                    <div style={{ marginLeft: 6, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                      <div style={{
+                        width: 46, height: 46, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 22,
+                        background: reached[st.n] ? "#FFF1C2" : "#eef2f4", border: `2.5px solid ${reached[st.n] ? "#E8A100" : "#cdd8dd"}`,
+                        opacity: reached[st.n] ? 1 : 0.5,
+                      }}>⭐</div>
+                      <span style={{ fontSize: 8.5, fontWeight: 900, color: reached[st.n] ? "#B47A00" : SUB }}>ステージ制覇</span>
+                    </div>
+                  </div>
+                  <button onClick={() => toggleReached(st.n)} style={{
+                    marginTop: 8, fontSize: 11.5, fontWeight: 900, cursor: "pointer",
+                    color: reached[st.n] ? "#fff" : readyToClear ? "#fff" : BLUE,
+                    background: reached[st.n] ? BLUE : readyToClear ? "#E8A100" : "#fff",
+                    border: `1.6px solid ${reached[st.n] ? BLUE : readyToClear ? "#E8A100" : BLUE}`,
+                    borderRadius: 11, padding: "5px 14px",
+                    animation: readyToClear ? "readyPulse 1.4s ease-in-out infinite" : "none",
+                  }}>{reached[st.n] ? "✓ ステージ制覇！" : readyToClear ? "✨ 4つ そろった！『ステージ制覇』する" : "4つ そろったら『ステージ制覇』"}</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: "26px 18px", textAlign: "center" }}>
+                <div style={{ fontSize: 30, marginBottom: 8 }}>🚧</div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: SUB }}>このマスは 準備中です</div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, marginTop: 6, lineHeight: 1.6 }}>
+                  ほかの マスを タップして、できる ところから すすめてね。<br />
+                  （先生へ：このマスの 内容は <b style={{ color: BLUE }}>PLAN</b> に <code>ready:true</code> で 追加できます）
+                </div>
+                <button onClick={() => { setOpenStage(1); setOpenLv(0); }} style={{ marginTop: 12, fontSize: 12.5, fontWeight: 900, cursor: "pointer", color: "#fff", background: BLUE, border: "none", borderRadius: 11, padding: "8px 16px" }}>はじめの マスを 見る →</button>
+              </div>
+            )}
+          </div>
+
+          {/* 右＝教材リンク置き場 */}
+          <div style={{ flex: "1 1 320px", minWidth: 300, border: `2px solid ${AQUA}`, borderRadius: 14, background: "#fff", overflow: "hidden", alignSelf: "flex-start" }}>
+            <div style={{ background: AQUA, color: "#fff", padding: "10px 14px" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, opacity: .9 }}>このマスで つかう</div>
+              <div style={{ fontSize: 16, fontWeight: 900 }}>📚 教材・リンク置き場</div>
+            </div>
+            <div style={{ padding: "11px 13px" }}>
+              {plan.ready ? (
+                <>
+                  <SectionTitle color={AQUA} icon="🔖" text={`このマス（${DEPTH[openLv].badge}${DEPTH[openLv].name}）の 教材`} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {plan.links.map((l, i) => <LinkChip key={i} item={l} block />)}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, lineHeight: 1.6 }}>この マスは 準備中。下の 共通リンクは つかえます。</div>
+              )}
+
+              <SectionTitle color={GREEN} icon="🟢" text="この単元の 共通リンク（いつでも）" mt />
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {COMMON_LINKS.map((l, i) => <LinkChip key={i} item={l} block />)}
+              </div>
+
+              <div style={{ marginTop: 12, fontSize: 10, fontWeight: 700, color: SUB, background: "#f3f8fa", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
+                💡 教科書ページ・計算ドリル番号・動画(NHK)などは、先生が あとで ここに はります（点線わくが あとで リンクに なります）。
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* つなげる先：下段（裏面表示中） */}
+      {showBack && (() => {
+        const c = NEXT_CARDS.find((x) => x.key === activeCard);
+        return (
+          <div key={`card-${activeCard}`} style={{ display: "flex", gap: 14, marginTop: 12, alignItems: "flex-start", flexWrap: "wrap", animation: "popUp .32s cubic-bezier(.2,.8,.2,1)" }}>
+            {/* 左：系統の解説＋リンク */}
+            <div style={{ flex: "1 1 360px", minWidth: 320, border: `2px solid ${GREEN}`, borderRadius: 14, background: "#fff", overflow: "hidden" }}>
+              <div style={{ background: GREEN, color: "#fff", padding: "10px 14px" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, opacity: .9 }}>つなげる先 ／ {c.grade}</div>
+                <div style={{ fontSize: 17, fontWeight: 900 }}>{c.title}</div>
+              </div>
+              <div style={{ padding: "11px 13px" }}>
+                <SectionTitle color={GRAY} icon="←" text="どこから つながってきた？" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {FROM_CHAIN.map((f, i) => (
+                    <div key={i} style={{ border: "1.5px dashed #9aa7ad", borderRadius: 8, padding: "6px 10px", background: "#f7f8f9" }}>
+                      <div style={{ fontSize: 9.5, fontWeight: 800, color: GRAY }}>{f.grade}</div>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: INK }}>{f.label}</div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: GRAY, marginTop: 2 }}>🧠 {f.think}</div>
+                    </div>
+                  ))}
+                  <div style={{ border: `2px solid ${BLUE}`, borderRadius: 8, padding: "6px 10px", background: "rgba(58,123,213,.08)" }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 800, color: BLUE }}>● 3年・この単元</div>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: INK }}>たし算・ひき算の筆算</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: BLUE, marginTop: 2 }}>🧠 位をそろえて 同じ位どうし</div>
+                  </div>
+                </div>
+
+                <SectionTitle color={GREEN} icon="🧠" text="この先への つなぐ考え方" mt />
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1c5a45", background: "#F3FBF7", border: `1.5px solid ${GREEN}`, borderRadius: 9, padding: "9px 12px", lineHeight: 1.55 }}>{c.think}</div>
+
+                <SectionTitle color="#c0392b" icon="🎬" text="動画" mt />
+                {c.video
+                  ? <a href={c.video.url} target="_blank" rel="noreferrer" style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#fff", background: "#c0392b", borderRadius: 9, padding: "10px 12px", textDecoration: "none", lineHeight: 1.4 }}>▶ {c.video.t}</a>
+                  : <div style={{ fontSize: 11.5, fontWeight: 800, color: SUB, background: "#f7f8f9", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>（動画リンク：後で）</div>}
+
+                <SectionTitle color={GREEN} icon="🔗" text="リンク" mt />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {c.links.map((l, i) => <LinkChip key={i} item={l} />)}
+                </div>
+              </div>
+            </div>
+
+            {/* 右：チャレンジ問題（無限生成） */}
+            <div style={{ flex: "1 1 320px", minWidth: 300, border: `2px solid ${AMBER_MAIN}`, borderRadius: 14, background: "#fff", overflow: "hidden" }}>
+              <div style={{ background: AMBER_MAIN, color: "#fff", padding: "10px 14px" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, opacity: .9 }}>チャレンジ問題（できる子は やってみよう）</div>
+                <div style={{ fontSize: 16, fontWeight: 900 }}>∞ {c.genLabel}</div>
+              </div>
+              <div style={{ padding: "14px 15px" }}>
+                {(() => {
+                  const Gen = c.gen ? GENERATORS[c.gen] : null;
+                  if (Gen) return <Gen />;
+                  return (
+                    <div style={{ textAlign: "center", padding: "26px 0", color: SUB }}>
+                      <div style={{ fontSize: 28, marginBottom: 8 }}>🛠️</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 800 }}>この問題は 準備中です</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, marginTop: 6 }}>いまは <b style={{ color: GREEN_TX }}>「小数のたし算」カード</b> で 無限問題が ためせます。</div>
+                      <button onClick={() => setActiveCard("dec")} style={{ marginTop: 12, fontSize: 12, fontWeight: 900, cursor: "pointer", color: "#fff", background: GREEN, border: "none", borderRadius: 11, padding: "8px 16px" }}>小数のたし算を ためす →</button>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ===== PBL オーバーレイ ===== */}
+      {showPBL && (
+        <PblShopping
+          items={SHOP_ITEMS} budget={budget} setBudget={setBudget}
+          cart={cart} setCart={setCart}
+          allClear={stagesReached >= N} stagesReached={stagesReached} N={N}
+          onClose={() => setShowPBL(false)}
+        />
+      )}
+
+      {/* 黄色の注記帯（ポンチ絵調） */}
+      <div style={{ marginTop: 12 }}>
+        <div style={{ background: NOTE_BG, border: `1.5px solid ${NOTE_BD}`, borderRadius: 10, padding: "9px 13px", fontSize: 10.5, fontWeight: 800, color: NOTE_INK, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 14 }}>💾</span>
+          ぬったマスの 色は この タブレットに 自動で 保存されます（とじても のこる）。やり直すときは 右上の「リセット」。
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== 無限：小数のたし算 ===== */
+function InfiniteDecimalAdd() {
+  const gen = () => {
+    const a = (Math.floor(Math.random() * 89) + 10) / 10; // 1.0〜9.9
+    const b = (Math.floor(Math.random() * 89) + 10) / 10;
+    return { a, b, ans: Math.round((a + b) * 10) / 10 };
+  };
+  const [q, setQ] = useState(gen);
+  const [val, setVal] = useState("");
+  const [judge, setJudge] = useState(null); // "ok"|"ng"|null
+  const [streak, setStreak] = useState(0);
+  const [count, setCount] = useState(0);
+  const inputRef = useRef(null);
+
+  const check = () => {
+    if (val === "") return;
+    const ok = Math.abs(parseFloat(val) - q.ans) < 1e-9;
+    setJudge(ok ? "ok" : "ng");
+    setCount((c) => c + 1);
+    setStreak((s) => (ok ? s + 1 : 0));
+  };
+  const next = () => { setQ(gen()); setVal(""); setJudge(null); if (inputRef.current) inputRef.current.focus(); };
+  const onKey = (e) => { if (e.key === "Enter") { judge ? next() : check(); } };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 800, color: SUB, marginBottom: 8 }}>
+        <span>れんぞく正かい：<b style={{ color: GREEN_TX }}>{streak}</b></span>
+        <span>といた数：{count}</span>
+      </div>
+      <div style={{ background: "#F3EDFB", border: `2px solid ${AMBER_MAIN}`, borderRadius: 12, padding: "16px 14px", textAlign: "center" }}>
+        <div style={{ fontSize: 28, fontWeight: 900, color: INK, letterSpacing: 1 }}>
+          {q.a.toFixed(1)} <span style={{ color: AMBER_MAIN }}>+</span> {q.b.toFixed(1)} =
+        </div>
+        <input
+          ref={inputRef} value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={onKey}
+          inputMode="decimal" placeholder="答え"
+          style={{ marginTop: 12, width: 130, fontSize: 22, fontWeight: 900, textAlign: "center", color: INK, border: `2px solid ${judge === "ok" ? GREEN : judge === "ng" ? "#D85A30" : "#cdd8dd"}`, borderRadius: 10, padding: "6px 8px", outline: "none" }}
+        />
+        <div style={{ marginTop: 8, fontSize: 10.5, fontWeight: 700, color: SUB }}>小数点を そろえて 計算しよう（位をそろえる）</div>
+      </div>
+
+      {judge && (
+        <div style={{ marginTop: 10, textAlign: "center", fontSize: 15, fontWeight: 900, color: judge === "ok" ? GREEN : "#D85A30" }}>
+          {judge === "ok" ? "⭕ せいかい！" : `❌ おしい… 答えは ${q.ans.toFixed(1)}`}
+        </div>
+      )}
+
+      <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+        {!judge
+          ? <button onClick={check} style={btnMain(AMBER_MAIN)}>こたえあわせ</button>
+          : <button onClick={next} style={btnMain(GREEN)}>つぎの問題 →</button>}
+      </div>
+    </div>
+  );
+}
+const btnMain = (c) => ({ flex: 1, fontSize: 14, fontWeight: 900, cursor: "pointer", color: "#fff", background: c, border: "none", borderRadius: 10, padding: "11px 0" });
+
+/* ===== ∞チャレンジ問題：ジェネレータ登録制 =====
+   新しい無限問題を 足すとき：
+   ①上のように コンポーネントを作る（例：function InfiniteXxx(){...}）
+   ②下の GENERATORS に  キー: コンポーネント  を 1行 追加
+   ③単元データの NEXT_CARDS で その カードに  gen:"キー"  を 指定する
+   これだけで「つなげる」裏面の チャレンジ欄に つながる。 */
+const GENERATORS = {
+  decimalAdd: InfiniteDecimalAdd,
+};
+
+/* ===== PBL：ショッピングモール ===== */
+function PblShopping({ items, budget, setBudget, cart, setCart, allClear, stagesReached, N, onClose }) {
+  const toggle = (id) => setCart((c) => { const x = { ...c }; if (x[id]) delete x[id]; else x[id] = true; return x; });
+  const lines = items.filter((it) => cart[it.id]).map((it) => ({ ...it, sub: it.price }));
+  const total = lines.reduce((s, l) => s + l.sub, 0);
+  const rest = budget - total;
+  const over = rest < 0;
+  const itemCount = lines.length;
+
+  // 答え合わせ（自分で計算 → 入力 → 判定）
+  const [ansTotal, setAnsTotal] = React.useState("");
+  const [ansRest, setAnsRest] = React.useState("");
+  const [checked, setChecked] = React.useState(false);
+  const totalOK = checked && parseInt(ansTotal, 10) === total;
+  const restOK = checked && parseInt(ansRest, 10) === rest;
+  const bothOK = totalOK && restOK;
+  // 選んだ品が変わったら 答え合わせを リセット
+  const cartKey = lines.map((l) => l.id).join(",");
+  React.useEffect(() => { setChecked(false); setAnsTotal(""); setAnsRest(""); }, [cartKey, budget]);
+  const reveal = checked; // 確認するまで 合計・残りは隠す
+  // 採点：予算内で、残りが少ないほど高評価
+  const usedRate = budget > 0 ? total / budget : 0;
+  let stars = 0, rank = "—";
+  if (lines.length > 0 && !over) {
+    if (rest === 0) { stars = 3; rank = "ぴったり賞！"; }
+    else if (usedRate >= 0.9) { stars = 3; rank = "たつじん級"; }
+    else if (usedRate >= 0.7) { stars = 2; rank = "じょうずに やりくり"; }
+    else { stars = 1; rank = "まだ よゆうが あるよ"; }
+  }
+  // 次の問いの芽：いちばん高い品を3人分（かけ算）／予算を2人で半分こ（わり算）
+  const topItem = lines.slice().sort((a, b) => b.price - a.price)[0] || null;
+  const mulAnswer = topItem ? topItem.price * 3 : null;
+  const halfBudget = Math.floor(budget / 2);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,40,45,.45)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "18px", overflow: "auto" }}>
+      <div style={{ width: "min(1000px, 100%)", background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,.3)" }}>
+        {/* ヘッダー帯 */}
+        <div style={{ background: `linear-gradient(180deg, ${AQUA}, #2E91A8)`, color: "#fff", padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 26 }}>🛒</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, opacity: .92 }}>たし算・ひき算の筆算を つかう PBL（探究）</div>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>ショッピングモールで お買いもの大さくせん</div>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,.25)", color: "#fff", border: "none", borderRadius: 9, padding: "6px 14px", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>とじる ✕</button>
+        </div>
+
+        {/* 解放前のヒント（未制覇でも遊べるが声かけ） */}
+        {!allClear && (
+          <div style={{ background: NOTE_BG, borderBottom: `1.5px solid ${NOTE_BD}`, color: NOTE_INK, padding: "8px 16px", fontSize: 11.5, fontWeight: 800 }}>
+            ✦ ステージを 全部すすめると 「達人モード」！ いまは {stagesReached}/{N} ステージ。れんしゅうとして 挑戦してみよう。
+          </div>
+        )}
+
+        <div style={{ padding: "16px 18px" }}>
+          {/* ミッション */}
+          <div style={{ background: "#F4FAFB", border: `2px solid ${AQUA}`, borderRadius: 12, padding: "11px 14px", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: BLUE, marginBottom: 4 }}>🎯 ミッション：家族みんなへ おみやげを 予算内で 買おう</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: INK, lineHeight: 1.6 }}>
+              じぶんの <b>よさん</b>を きめて、家族への おみやげを えらぼう。ねだんを <b style={{ color: BLUE }}>たし算</b>で 合計し、よさんからの <b style={{ color: AMBER_MAIN }}>のこり</b>を <b>ひき算</b>で もとめる。<b>よさんを こえず、のこりが 少ない</b>ほど ナイスな やりくり！ ★を めざそう。
+            </div>
+            <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 800, color: GREEN_TX, background: "#F3FBF7", border: `1.3px solid ${GREEN}`, borderRadius: 8, padding: "6px 10px", lineHeight: 1.5 }}>
+              🧠 大じなのは この単元と 同じ：<b>ひっ算で 位をそろえて、同じ位どうし</b>を 計算しよう。
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            {/* 左：お店（商品） */}
+            <div style={{ flex: "1 1 380px", minWidth: 300 }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: INK, marginBottom: 8 }}>🏬 モールの お店（タップで えらぶ／もう一回 タップで 取り消し）</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+                {items.map((it) => (
+                  <button key={it.id} onClick={() => toggle(it.id)} style={{
+                    textAlign: "left", cursor: "pointer", background: cart[it.id] ? "#EAF6F8" : "#fff", border: `2px solid ${cart[it.id] ? AQUA : "#e0e8ea"}`,
+                    borderRadius: 11, padding: "9px 10px", boxShadow: cart[it.id] ? `0 3px 10px ${AQUA}33` : "none", position: "relative",
+                  }}>
+                    {cart[it.id] && <span style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: "50%", background: AQUA, color: "#fff", fontSize: 12, fontWeight: 900, display: "grid", placeItems: "center" }}>✓</span>}
+                    <div style={{ fontSize: 24 }}>{it.emoji}</div>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: INK, lineHeight: 1.25, marginTop: 2, minHeight: 28 }}>{it.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: BLUE, marginTop: 2 }}>{it.price.toLocaleString()}円</div>
+                    {cart[it.id] && <div style={{ fontSize: 10, fontWeight: 900, color: AQUA, marginTop: 2 }}>カゴに 入れた</div>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 右：よさん・カゴ・計算 */}
+            <div style={{ flex: "1 1 300px", minWidth: 280 }}>
+              {/* 予算設定 */}
+              <div style={{ border: `2px solid ${BLUE}`, borderRadius: 12, padding: "11px 13px", marginBottom: 12 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 900, color: BLUE, marginBottom: 6 }}>💰 じぶんの よさんを きめよう</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <input type="number" value={budget} onChange={(e) => setBudget(Math.max(0, parseInt(e.target.value || "0", 10)))}
+                    style={{ width: 110, fontSize: 18, fontWeight: 900, color: INK, border: `2px solid ${BLUE}`, borderRadius: 9, padding: "5px 8px", textAlign: "right" }} />
+                  <span style={{ fontSize: 15, fontWeight: 900 }}>円</span>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[3000, 5000, 10000].map((b) => (
+                      <button key={b} onClick={() => setBudget(b)} style={{ fontSize: 10.5, fontWeight: 800, cursor: "pointer", color: BLUE, background: "#fff", border: `1.4px solid ${BLUE}`, borderRadius: 9, padding: "3px 8px" }}>{b.toLocaleString()}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* カゴ */}
+              <div style={{ border: "2px solid #e0e8ea", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "#F4FAFB", padding: "8px 12px", fontSize: 12, fontWeight: 900, color: INK }}>🧺 カゴの中（タップで 取り消し）</div>
+                <div style={{ padding: "8px 12px" }}>
+                  {lines.length === 0 && <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, padding: "10px 0", textAlign: "center" }}>お店で えらんでね</div>}
+                  {lines.map((l) => (
+                    <div key={l.id} onClick={() => toggle(l.id)} title="タップで 取り消し" style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 4px", borderBottom: "1px dashed #e6edef", cursor: "pointer", borderRadius: 6 }}>
+                      <span style={{ fontSize: 16 }}>{l.emoji}</span>
+                      <span style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: INK }}>{l.name}</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 900, color: BLUE, minWidth: 60, textAlign: "right" }}>{l.price.toLocaleString()}円</span>
+                      <span style={{ fontSize: 13, color: "#c25", fontWeight: 900 }}>✕</span>
+                    </div>
+                  ))}
+                </div>
+                {/* よさんは見える／合計・残りは答え合わせまで隠す */}
+                <div style={{ padding: "10px 12px", background: "#fafdfd", borderTop: "1.5px solid #e0e8ea" }}>
+                  <Row label="よさん" value={`${budget.toLocaleString()}円`} color={INK} />
+                  <Row label="ごうけい（たし算）" value={reveal ? `${total.toLocaleString()}円` : "？ 円"} color={reveal ? BLUE : SUB} />
+                  <div style={{ height: 1, background: "#e0e8ea", margin: "6px 0" }} />
+                  <Row label="のこり（ひき算）" value={reveal ? `${rest.toLocaleString()}円` : "？ 円"} color={reveal ? (over ? "#D85A30" : GREEN) : SUB} big />
+                </div>
+              </div>
+
+              {/* 自分で計算 → 答え合わせ */}
+              {lines.length > 0 && (
+                <div style={{ marginTop: 12, border: `2px solid ${AMBER_MAIN}`, borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: AMBER_MAIN, color: "#fff", padding: "8px 12px", fontSize: 12.5, fontWeight: 900 }}>✍️ まず ノートで 計算 → 答え合わせ</div>
+                  <div style={{ padding: "11px 13px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: SUB, lineHeight: 1.5, marginBottom: 8 }}>
+                      上の ねだんを 見て、<b style={{ color: BLUE }}>合計（たし算）</b>と <b style={{ color: GREEN_TX }}>のこり（ひき算）</b>を ノートに ひっ算で 計算して、答えを 入れよう。
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <AnsField label="合計は？" unit="円" value={ansTotal} onChange={setAnsTotal} ok={checked ? totalOK : null} />
+                      <AnsField label="のこりは？" unit="円" value={ansRest} onChange={setAnsRest} ok={checked ? restOK : null} />
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
+                      {!checked
+                        ? <button onClick={() => setChecked(true)} disabled={ansTotal === "" || ansRest === ""} style={{ flex: 1, fontSize: 14, fontWeight: 900, cursor: (ansTotal === "" || ansRest === "") ? "not-allowed" : "pointer", color: "#fff", background: (ansTotal === "" || ansRest === "") ? "#c9d3d6" : AMBER_MAIN, border: "none", borderRadius: 10, padding: "10px 0" }}>答え合わせ</button>
+                        : <button onClick={() => { setChecked(false); setAnsTotal(""); setAnsRest(""); }} style={{ flex: 1, fontSize: 13, fontWeight: 900, cursor: "pointer", color: AMBER_MAIN, background: "#fff", border: `2px solid ${AMBER_MAIN}`, borderRadius: 10, padding: "9px 0" }}>もう一回 計算する</button>}
+                    </div>
+                    {checked && (
+                      <div style={{ marginTop: 10, textAlign: "center", fontSize: 14, fontWeight: 900, color: bothOK ? GREEN : "#D85A30", background: bothOK ? "#EAF7F1" : "#FDEEE7", borderRadius: 9, padding: "9px" }}>
+                        {bothOK ? "⭕ 両方 せいかい！ よく できました！" : `${totalOK ? "合計○" : "合計×"} ／ ${restOK ? "のこり○" : "のこり×"}　もう一回 たしかめよう`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 予算オーバー警告（答え合わせ後だけ） */}
+              {reveal && over && (
+                <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 800, color: "#D85A30", background: "#FDEEE7", borderRadius: 8, padding: "8px 11px" }}>⚠️ よさんを {Math.abs(rest).toLocaleString()}円 こえているよ。お店で 何かを 取り消そう。</div>
+              )}
+            </div>
+          </div>
+
+          {/* 手順＆発表 */}
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {[
+              { n: 1, t: "よさんを きめる" },
+              { n: 2, t: "ほしいものを えらぶ" },
+              { n: 3, t: "合計を たし算" },
+              { n: 4, t: "のこりを ひき算" },
+              { n: 5, t: "ひっ算で たしかめ" },
+              { n: 6, t: "おすすめプランを 発表" },
+            ].map((s) => (
+              <div key={s.n} style={{ flex: "1 1 130px", display: "flex", alignItems: "center", gap: 7, border: `1.6px solid ${AQUA}`, borderRadius: 9, padding: "7px 9px", background: "#F4FAFB" }}>
+                <span style={{ width: 20, height: 20, borderRadius: "50%", background: AQUA, color: "#fff", fontSize: 11, fontWeight: 900, display: "grid", placeItems: "center", flex: "none" }}>{s.n}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: INK }}>{s.t}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* ★達成度 */}
+          {reveal && lines.length > 0 && (
+            <div style={{ marginTop: 14, border: `2px solid ${over ? "#D85A30" : "#E8A100"}`, borderRadius: 12, padding: "12px 14px", background: over ? "#FDEEE7" : "#FFFBEF", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 30, letterSpacing: 2 }}>{over ? "💸" : "⭐".repeat(stars) + "☆".repeat(3 - stars)}</div>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, color: over ? "#D85A30" : "#B47A00" }}>{over ? "よさんオーバー！ えらび直そう" : rank}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: SUB, marginTop: 2 }}>
+                  {over ? `よさんを ${Math.abs(rest).toLocaleString()}円 こえています。` : `よさんの ${Math.round(usedRate * 100)}% を つかって、${itemCount}こ 買えたよ。のこり ${rest.toLocaleString()}円。`}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 次の問い（かけ算・わり算の芽） */}
+          {bothOK && topItem && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: GREEN_TX, marginBottom: 6 }}>↗ もっと考えよう（つぎの たんげんの たね）</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 240px", border: `1.8px dashed ${GREEN}`, borderRadius: 10, padding: "10px 12px", background: "#F3FBF7" }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: GREEN_TX }}>✖️ かけ算の たね</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, marginTop: 3, lineHeight: 1.5 }}>
+                    「{topItem.emoji}{topItem.name}」を 家族<b>3人分</b> 買うと？<br />
+                    <span style={{ color: SUB }}>{topItem.price.toLocaleString()}円 × 3 ＝ </span><b style={{ color: GREEN_TX }}>{mulAnswer.toLocaleString()}円</b>
+                    <span style={{ fontSize: 10, color: SUB }}>（たし算を 3回でも！）</span>
+                  </div>
+                </div>
+                <div style={{ flex: "1 1 240px", border: `1.8px dashed ${GREEN}`, borderRadius: 10, padding: "10px 12px", background: "#F3FBF7" }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: GREEN_TX }}>➗ わり算の たね</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, marginTop: 3, lineHeight: 1.5 }}>
+                    よさん {budget.toLocaleString()}円を <b>兄弟2人で 半分こ</b>すると？<br />
+                    <span style={{ color: SUB }}>{budget.toLocaleString()}円 ÷ 2 ＝ </span><b style={{ color: GREEN_TX }}>{halfBudget.toLocaleString()}円</b>
+                    <span style={{ fontSize: 10, color: SUB }}>{budget % 2 !== 0 ? "（あまり 1円！）" : ""}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 発表カード */}
+          {bothOK && (
+            <div style={{ marginTop: 12, border: `2px solid ${AQUA}`, borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ background: AQUA, color: "#fff", padding: "8px 13px", fontSize: 13, fontWeight: 900 }}>📣 わたしの おみやげプラン（発表カード）</div>
+              <div style={{ padding: "11px 14px" }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: INK, marginBottom: 6 }}>
+                  よさん <b style={{ color: BLUE }}>{budget.toLocaleString()}円</b>で、つぎの {itemCount}こ を えらびました：
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {lines.map((l) => (
+                    <span key={l.id} style={{ fontSize: 11.5, fontWeight: 800, color: INK, background: "#F4FAFB", border: `1.4px solid ${AQUA}`, borderRadius: 11, padding: "3px 10px" }}>
+                      {l.emoji}{l.name}（{l.sub.toLocaleString()}円）
+                    </span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>
+                  合計 <span style={{ color: BLUE }}>{total.toLocaleString()}円</span> ／ のこり <span style={{ color: GREEN_TX }}>{rest.toLocaleString()}円</span>　{rest === 0 ? "→ ぴったり！" : `→ ${rank}`}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 10.5, fontWeight: 700, color: SUB, background: NOTE_BG, border: `1.3px solid ${NOTE_BD}`, borderRadius: 8, padding: "7px 10px" }}>
+                  💬 発表のヒント：「だれに」「なぜ それを えらんだか」「やりくりの くふう」を 話そう。友だちの プランとも くらべてみよう。
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+function AnsField({ label, unit, value, onChange, ok }) {
+  const border = ok === null ? "#cdd8dd" : ok ? GREEN : "#D85A30";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ fontSize: 12.5, fontWeight: 800, color: INK, width: 70, flex: "none" }}>{label}</span>
+      <input type="number" value={value} onChange={(e) => onChange(e.target.value)} placeholder="答え"
+        style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 900, color: INK, textAlign: "right", border: `2px solid ${border}`, borderRadius: 9, padding: "6px 9px", outline: "none" }} />
+      <span style={{ fontSize: 13, fontWeight: 900, flex: "none" }}>{unit}</span>
+      {ok !== null && <span style={{ fontSize: 17, fontWeight: 900, color: ok ? GREEN : "#D85A30", width: 18, flex: "none" }}>{ok ? "○" : "×"}</span>}
+    </div>
+  );
+}
+function Row({ label, value, color, big }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: big ? "3px 0" : "2px 0" }}>
+      <span style={{ fontSize: big ? 12.5 : 11, fontWeight: 800, color: color }}>{label}</span>
+      <span style={{ fontSize: big ? 19 : 13, fontWeight: 900, color: color }}>{value}</span>
+    </div>
+  );
+}
+
+/* ===== 小物 ===== */
+function LinkChip({ item, block }) {
+  const base = { fontSize: 11, fontWeight: 800, borderRadius: 11, padding: "5px 11px", textDecoration: "none", display: block ? "block" : "inline-block" };
+  const has = item && item.url;
+  if (has) {
+    return <a href={item.url} target="_blank" rel="noreferrer" style={{ ...base, color: "#fff", background: GREEN, border: `1.5px solid ${GREEN}` }}>{item.t} ↗</a>;
+  }
+  return <span style={{ ...base, color: SUB, border: "1.5px dashed #cdd8dd", background: "#fff" }}>{item.t}</span>;
+}
+function SectionTitle({ color, icon, text, mt }) {
+  return <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 900, color, margin: mt ? "12px 0 6px" : "0 0 6px" }}><span>{icon}</span>{text}</div>;
+}
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
