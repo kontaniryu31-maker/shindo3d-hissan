@@ -32,8 +32,9 @@ if (typeof window !== "undefined" && !window.storage) {
 /* ===== カラー（水色=すすむ／紫=ふかめる／緑=つなげる） ===== */
 const AQUA = "#4DB6C7";          // ヘッダー帯など装飾の水色
 const BLUE = "#2E91A8";          // 進度＝落ち着いた水色
-const AMBER = ["#B79CE0", "#9B79D6", "#7E54C4", "#5E3A9E"]; // 深度4段＝紫グラデ（薄→濃／もぐるほど濃い）
-const AMBER_MAIN = "#7E54C4";    // 深度の代表色（紫）
+const AMBER = ["#B7CBEA", "#F4C8A6", "#CDD6E0", "#F7E29A"];    // 深度＝金銀銅鉄（パステル塗り：鉄→銅→銀→金）
+const AMBER_DK = ["#4F79C4", "#DB8442", "#6E8CA6", "#D7A91E"]; // 同・濃いめ（枠線・文字・見出し用）
+const AMBER_MAIN = "#D7A91E";    // 深度の代表色＝金（濃いめ）
 const GREEN = "#3FA98C";          // 伸度＝緑（線・面・帯用）
 const GREEN_TX = "#1f7a5f";       // 伸度の文字用（濃い緑＝白地で読める）
 const GRAY = "#8a97a0";
@@ -65,12 +66,12 @@ const NOTE_INK = "#8A6D1B";
 
 const UNIT = "4. たし算とひき算の筆算";
 const BOOK = "東京書籍「新しい算数3」上巻（9時間）";
-const CORE = "位をそろえて、同じ位どうしを 計算する（十進位取り）";
+const CORE = "位をそろえて、同じ位どうしを 計算する（くらいの しくみ）";
 
 const STAGES = [
   { n: 1, title: "たし算", sub: "くり上がり", ex: "365 + 457" },
   { n: 2, title: "ひき算", sub: "くり下がり", ex: "512 − 348" },
-  { n: 3, title: "0をこえる", sub: "波及のくり下がり", ex: "402 − 175" },
+  { n: 3, title: "0をこえる", sub: "つづく くり下がり", ex: "402 − 175" },
   { n: 4, title: "4けたの計算", sub: "たし算・ひき算", ex: "2456 + 3897" },
   { n: 5, title: "たしかめ算", sub: "・まとめ", ex: "答えのたしかめ" },
 ];
@@ -91,20 +92,23 @@ const NEXT_CARDS = [
   {
     key: "big", grade: "3年", title: "大きい数のしくみ",
     think: "位取りを 万・億へ ひろげる（同じ十進の考え）",
-    video: null,
-    links: [{ t: "eboard：大きい数（後で）", url: null }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
-    gen: null, genLabel: "大きい数を 読む（準備中）",
+    concept: "10が 10こで 100、100が 10こで 1000…と、10ずつ まとまって 大きく なるよ。1000が 10こで「一万（10000）」。だから 大きい数も『どの位（くらい）に いくつ あるか』で 読める。位が ふえても 考え方は 同じ！",
+    video: { t: "NHK さんすうレスキュー！ 1万より大きい数(3年)", url: "https://edu.web.nhk/school/watch/bangumi/?das_id=D0005160104_00000" },
+    links: [{ t: "eboard：算数 単元一覧（大きい数）", url: "https://www.eboard.jp/list/7/" }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
+    gen: "bigPlace", genLabel: "大きい数の 位クイズ（無限）",
   },
   {
     key: "mul", grade: "3年", title: "かけ算の筆算",
     think: "★考え方がかわる：位ごとに分けて計算して たす（部分積）。右にそろえる",
+    concept: "かけ算は『位ごとに 分けて』考えると かんたん。れい：34×7 は、30×7＝210 と 4×7＝28 を たして 238。ひっ算では 一の位から 順に かけて、くり上がりを たすよ。たし算と 同じで『位』が 大事！",
     video: null,
-    links: [{ t: "eboard：かけ算の筆算（後で）", url: null }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
-    gen: null, genLabel: "2けた×1けた（準備中）",
+    links: [{ t: "eboard：かけ算の筆算(×1けた)", url: "https://www.eboard.jp/content/212/" }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
+    gen: "mul2x1", genLabel: "2けた×1けた（無限）",
   },
   {
     key: "dec", grade: "3年", title: "小数のたし算",
     think: "小数点をそろえる＝位をそろえる（この単元と 同じ考え！）",
+    concept: "小数の たし算も『位をそろえる』。小数点を たてに そろえて 書けば、あとは 同じ位どうしを たすだけ。れい：2.3＋1.4＝3.7。整数の ひっ算と まったく 同じ考え！",
     video: { t: "NHK さんすうレスキュー！ 小数(3年)：右ぞろえで失敗…位をそろえる", url: "https://edu.web.nhk/school/watch/bangumi/?das_id=D0005160097_00000" },
     links: [{ t: "eboard：小数の引き算(筆算)", url: "https://www.eboard.jp/content/225/v/6/" }, { t: "NHK for School 算数", url: "https://edu.web.nhk/school/sansuu/" }],
     gen: "decimalAdd", genLabel: "小数のたし算（無限）",
@@ -112,9 +116,10 @@ const NEXT_CARDS = [
   {
     key: "g4", grade: "4年", title: "整数の計算の定着",
     think: "計算の力を 確かなものに（4年へ）",
+    concept: "たし算・ひき算の ひっ算は、けたが ふえても『位をそろえて 同じ位どうし』で いつでも 同じ。たくさん れんしゅうして、正かくに・はやく できるように しよう。4年の 大きな計算にも つながるよ。",
     video: null,
     links: [{ t: "eboard：算数 単元一覧", url: "https://www.eboard.jp/list/7/" }],
-    gen: null, genLabel: "（準備中）",
+    gen: "intMix", genLabel: "たし算・ひき算 ミックス（無限）",
   },
 ];
 
@@ -130,7 +135,7 @@ const COMMON_LINKS = [
    ready:false にすると、そのマスは「準備中」表示にフォールバックする（横展開時の未作成用）。 */
 const PLAN = {
   1: { // たし算（くり上がり）＝作り込み
-    0: { ready: true, kind: "read",
+    0: { ready: true, kind: "read", readPage: "教科書 上 p.44〜46",
       goal: "教科書を 音読し、大事なことば（位・同じ位どうし・くり上がり）に 線を引ける。",
       prep: ["教科書", "赤えんぴつ", "ノート"],
       asks: ["どの ことばが 大事だと思う？", "「位」「くり上がり」は どこに 出てくる？", "線を引いた ことばを 使って 1文で 言える？"],
@@ -144,13 +149,14 @@ const PLAN = {
       teacher: ["一の位から 順に 計算しているか", "くり上がりの 処理が 正しいか"],
       links: [{ t: "計算ドリル 19・20", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
-    2: { ready: true, kind: "explain_print", // ★プリント運用
-      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
-      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKが もらえたら このマスを ぬる"],
-      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+    2: { ready: true, kind: "explain_print",
+      explain: { problem: "365 ＋ 457", page: "教科書 上 p.45", point: "一の位 5＋7＝12 の『小さい1』は、ほんとうは 10。それが 十の位へ くり上がる（位取り）。" },
+      goal: "教科書 p.45 の 365＋457 を、位取りと くり上がりを つかって「なぜ そう計算するか」説明できる。",
+      flow: ["①教科書の この問題を ノートに とく", "②図とことばで「なぜ」を 説明（位・くり上がり）", "③友だち・先生に 説明して OKなら ぬる"],
+      prep: ["教科書 上 p.45", "ノート", "赤えんぴつ"],
       asks: ["小さい『1』は ほんとうは いくつ？（1？10？）", "その『10』は なんの位に いく？", "ことばだけでなく 図でも 言える？"],
       teacher: ["13を 10と3に 分けて とらえているか", "小さい1を“10”と 説明できるか", "図（ブロック・位取り表）と 式・ことばを 対応づけているか"],
-      links: [{ t: "📄 説明プリント①たし算くり上がり（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+      links: [{ t: "教科書 上 p.45", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     3: { ready: true, kind: "together",
       goal: "くり上がりの 考え方を 友だちと 説明し合い、よりよい 言い方に できる。",
@@ -162,7 +168,7 @@ const PLAN = {
   },
 
   2: { // ひき算（くり下がり）
-    0: { ready: true, kind: "read",
+    0: { ready: true, kind: "read", readPage: "教科書 上 p.47〜48",
       goal: "教科書を 音読し、大事なことば（くり下がり・10をかりる）に 線を引ける。",
       prep: ["教科書", "赤えんぴつ", "ノート"],
       asks: ["「くり下がり」は どこに 出てくる？", "「10をかりる」とは どういうこと？", "線を引いた ことばで 1文 言える？"],
@@ -177,12 +183,13 @@ const PLAN = {
       links: [{ t: "計算ドリル 21", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     2: { ready: true, kind: "explain_print",
-      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
-      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
-      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      explain: { problem: "512 − 348", page: "教科書 上 p.47", point: "一の位 2−8 は ひけない。十の位から 10を かりて 12−8。かりたら 十の位は 1 へる（位取り）。" },
+      goal: "教科書 p.47 の 512−348 を、位取りと くり下がりを つかって 説明できる。",
+      flow: ["①教科書の この問題を ノートに とく", "②図とことばで「なぜ」を 説明（10をかりる・上は1へる）", "③友だち・先生に 説明して OKなら ぬる"],
+      prep: ["教科書 上 p.47", "ノート", "赤えんぴつ"],
       asks: ["なぜ 上の位から 10を かりるの？", "かりた10は どこで つかう？", "図で 「10をばらす」を 表せる？"],
       teacher: ["「10をかりて 上は1へる」を 説明できるか", "図と 式・ことばを 対応づけているか"],
-      links: [{ t: "📄 説明プリント②ひき算くり下がり（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+      links: [{ t: "教科書 上 p.47", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     3: { ready: true, kind: "together",
       goal: "くり下がりの 考え方を 友だちと 説明し合い、よりよい 言い方に できる。",
@@ -194,7 +201,7 @@ const PLAN = {
   },
 
   3: { // 0をこえるくり下がり（波及）
-    0: { ready: true, kind: "read",
+    0: { ready: true, kind: "read", readPage: "教科書 上 p.48〜49",
       goal: "教科書を 音読し、大事なことば（0をこえる・百からかりる）に 線を引ける。",
       prep: ["教科書", "赤えんぴつ", "ノート"],
       asks: ["十の位が 0の時 どうする？", "「百からかりる」は どういうこと？", "線を引いた ことばで 言える？"],
@@ -209,12 +216,13 @@ const PLAN = {
       links: [{ t: "計算ドリル 22", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     2: { ready: true, kind: "explain_print",
-      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
-      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
-      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      explain: { problem: "402 − 175", page: "教科書 上 p.48", point: "十の位が 0で かりられない。百を くずして 十へ、さらに 一へ わたす（百→十→一の くり下がり）。" },
+      goal: "教科書 p.48 の 402−175 を、位取りと 波及の くり下がりで 説明できる。",
+      flow: ["①教科書の この問題を ノートに とく", "②図とことばで「なぜ」を 説明（百→十→一に わたす）", "③友だち・先生に 説明して OKなら ぬる"],
+      prep: ["教科書 上 p.48", "ノート", "赤えんぴつ"],
       asks: ["十が 0だと なぜ そのまま かりられない？", "百を くずすと 十は いくつに なる？", "図で 「百→十→一」を 表せる？"],
       teacher: ["百からかりて 十・一へ わたす流れを 説明できるか", "図と 式を 対応づけているか"],
-      links: [{ t: "📄 説明プリント③0をこえる（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+      links: [{ t: "教科書 上 p.48", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     3: { ready: true, kind: "together",
       goal: "0をこえる くり下がりの 考え方を 友だちと 説明し合い、高め合える。",
@@ -226,7 +234,7 @@ const PLAN = {
   },
 
   4: { // 4けたの計算
-    0: { ready: true, kind: "read",
+    0: { ready: true, kind: "read", readPage: "教科書 上 p.50〜51",
       goal: "教科書を 音読し、大事なことば（4けた・けたがふえても同じ）に 線を引ける。",
       prep: ["教科書", "赤えんぴつ", "ノート"],
       asks: ["3けたと 4けた、何が ちがう？", "やり方は 同じ？ ちがう？", "線を引いた ことばで 言える？"],
@@ -241,12 +249,13 @@ const PLAN = {
       links: [{ t: "計算ドリル 23", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     2: { ready: true, kind: "explain_print",
-      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
-      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
-      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      explain: { problem: "2456 ＋ 3897", page: "教科書 上 p.50", point: "けたが ふえても、位をそろえて 一の位から 同じ位どうし。やり方は 3けたと まったく 同じ（一般化）。" },
+      goal: "教科書 p.50 の 2456＋3897 を、『けたが ふえても 位をそろえれば 同じ』と 説明できる。",
+      flow: ["①教科書の この問題を ノートに とく", "②図とことばで「3けたと 同じ理由」を 説明", "③友だち・先生に 説明して OKなら ぬる"],
+      prep: ["教科書 上 p.50", "ノート", "赤えんぴつ"],
       asks: ["なぜ けたが ふえても 同じやり方？", "大切なのは 何を そろえること？", "「いつでも同じ」を ことばで 言える？"],
       teacher: ["「位をそろえれば 同じ」と 一般化して 説明できるか", "3けたとの 共通点を 言えるか"],
-      links: [{ t: "📄 説明プリント④4けた（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+      links: [{ t: "教科書 上 p.50", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     3: { ready: true, kind: "together",
       goal: "「けたが ふえても 同じ」を 友だちと 説明し合い、考えを 高め合える。",
@@ -258,7 +267,7 @@ const PLAN = {
   },
 
   5: { // たしかめ算・まとめ
-    0: { ready: true, kind: "read",
+    0: { ready: true, kind: "read", readPage: "教科書 上 p.52〜53",
       goal: "教科書を 音読し、大事なことば（たしかめ算）に 線を引ける。",
       prep: ["教科書", "赤えんぴつ", "ノート"],
       asks: ["「たしかめ算」とは 何？", "たし算と ひき算は どんな 関係？", "線を引いた ことばで 言える？"],
@@ -273,12 +282,13 @@ const PLAN = {
       links: [{ t: "計算ドリル 24（たしかめテスト）", url: null }, { t: "計算ドリル 25（文章題）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     2: { ready: true, kind: "explain_print",
-      goal: "【説明プリント】を解いて 先生に見てもらい、OKが もらえたら クリア。",
-      flow: ["①説明プリントを 解く（図とことばで）", "②先生に 見てもらう", "③OKで このマスを ぬる"],
-      prep: ["説明プリント（先生から）", "赤えんぴつ", "ノート"],
+      explain: { problem: "512−348＝164 の たしかめ → 164＋348", page: "教科書 上 p.52", point: "ひき算の答え＋ひいた数＝もとの数。たし算とひき算は ぎゃくの関係（だから たしかめられる）。" },
+      goal: "教科書 p.52 の たしかめ算で、『なぜ たしかめに なるか』を たし算とひき算の関係で 説明できる。",
+      flow: ["①教科書の たしかめ算を ノートで やってみる", "②「なぜ もとの数に もどるか」を 図とことばで 説明", "③友だち・先生に 説明して OKなら ぬる"],
+      prep: ["教科書 上 p.52", "ノート", "赤えんぴつ"],
       asks: ["なぜ たしかめ算で 正しいと いえる？", "たし算と ひき算は どう つながる？", "ことばで 説明できる？"],
       teacher: ["たし算とひき算の関係で 説明できるか", "なぜ確かめになるか 言えるか"],
-      links: [{ t: "📄 説明プリント⑤たしかめ算（先生が配布）", url: null }, { t: "📄 答え（先生用）", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
+      links: [{ t: "教科書 上 p.52", url: null }, { t: "eboard：3けたのたし算・ひき算(筆算)", url: "https://www.eboard.jp/content/182/" }],
     },
     3: { ready: true, kind: "together",
       goal: "たしかめ算の しかたを 友だちと 説明し合い、まとめを 高め合える。",
@@ -335,11 +345,12 @@ const store = {
 function App() {
   const [openStage, setOpenStage] = useState(1);
   const [openLv, setOpenLv] = useState(0);       // どのマスを開いているか（既定はLv1「読む」＝学習の入口）
-  const [done, setDone] = useState({});           // "s-k": true
-  const [reached, setReached] = useState({});      // s: true
+  const [done, setDone] = useState({});           // "s-k": true（ぬったマス）
   const [showBack, setShowBack] = useState(false); // つなげる裏面
   const [activeCard, setActiveCard] = useState("dec"); // つなげる先カード
-  const [showPBL, setShowPBL] = useState(false);   // PBL画面
+  const [showPBL, setShowPBL] = useState(false);   // PBL画面（お買いもの）
+  const [showBattle, setShowBattle] = useState(false); // PBL（モンスターバトル）
+  const [showCipher, setShowCipher] = useState(false); // PBL（暗号たんてい）
   const [budget, setBudget] = useState(5000);       // 予算（自分で設定）
   const [cart, setCart] = useState({});             // {itemId: 個数}
   const [loaded, setLoaded] = useState(false);
@@ -374,7 +385,6 @@ function App() {
         try {
           const v = JSON.parse(r.value);
           setDone(v.done || {});
-          setReached(v.reached || {});
         } catch (e) { /* 壊れていたら無視 */ }
       }
       if (alive) setLoaded(true);
@@ -384,31 +394,22 @@ function App() {
   /* ===== 永続保存：書き込み ===== */
   useEffect(() => {
     if (!loaded) return;
-    store.set(STORE_KEY, JSON.stringify({ done, reached }));
-  }, [done, reached, loaded]);
+    store.set(STORE_KEY, JSON.stringify({ done }));
+  }, [done, loaded]);
 
   const toggleDone = (s, k) => setDone((d) => ({ ...d, [`${s}-${k}`]: !d[`${s}-${k}`] }));
-  const toggleReached = (s) => setReached((r) => ({ ...r, [s]: !r[s] }));
   const resetAll = async () => {
-    setDone({}); setReached({});
+    setDone({});
     await store.del(STORE_KEY);
   };
-
-  const stagesReached = Object.values(reached).filter(Boolean).length;
 
   const st = STAGES.find((s) => s.n === openStage);
   const plan = (PLAN[openStage] && PLAN[openStage][openLv]) ? PLAN[openStage][openLv] : { ready: false };
   const showGuide = openLv != null;
-  // 開いているステージの 4バッジが そろったか（そろったら『ステージ制覇』ボタンを 光らせて うながす）
-  const allFourDone = !!st && DEPTH.every((_, k) => done[`${st.n}-${k}`]);
-  const readyToClear = allFourDone && !reached[st.n];
 
   // 箱頂点
   const A = px(-20, -20, 0), B = px(FW + 20, -20, 0), Cc = px(FW + 20, FH + 20, 0), D = px(-20, FH + 20, 0);
   const A2 = px(-20, -20, DEEP), B2 = px(FW + 20, -20, DEEP), C2 = px(FW + 20, FH + 20, DEEP), D2 = px(-20, FH + 20, DEEP);
-
-  // 取得済みバッジ
-  const badgesByStage = (s) => DEPTH.map((d, k) => ({ ...d, got: !!done[`${s}-${k}`] }));
 
   return (
     <div style={{
@@ -417,26 +418,33 @@ function App() {
       minHeight: "100vh", color: INK, padding: "16px 18px 26px", boxSizing: "border-box",
     }}>
       <style>{`@keyframes popUp{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes cellPop{0%{transform:scale(1)}45%{transform:scale(1.07)}100%{transform:scale(1)}}
-@keyframes readyPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,161,0,.55)}50%{box-shadow:0 0 0 7px rgba(232,161,0,0)}}`}</style>
+@keyframes cellPop{0%{transform:scale(1)}45%{transform:scale(1.07)}100%{transform:scale(1)}}`}</style>
       {/* ヘッダー */}
       <div style={{ display: "flex", alignItems: "center", gap: 13, flexWrap: "wrap" }}>
         <div style={{ width: 46, height: 46, borderRadius: 12, background: BLUE, color: "#fff", fontWeight: 900, fontSize: 16, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 5px 0 rgba(46,145,168,.3)" }}>3D</div>
         <div style={{ flex: 1, minWidth: 240 }}>
           <div style={{ fontSize: 22, fontWeight: 900, color: BLUE, lineHeight: 1.05 }}>3D 自由進度表</div>
           <div style={{ fontSize: 12.5, fontWeight: 800, marginTop: 2 }}>たんげん：<span style={{ color: BLUE }}>{UNIT}</span></div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: SUB, marginTop: 1 }}>{BOOK}　／　核：{CORE}</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: SUB, marginTop: 1 }}>{BOOK}　／　いちばん大事：{CORE}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: SUB, textAlign: "right", lineHeight: 1.5 }}>
-            <span style={{ color: BLUE }}>━</span>すすむ　<span style={{ color: AMBER_MAIN }}>━</span>ふかめる（理解の深さ）　<span style={{ color: GREEN_TX }}>━</span>つなげる
+            <span style={{ color: BLUE }}>━</span>すすむ　<span style={{ color: AMBER_MAIN }}>━</span>ふかめる（わかりの ふかさ）　<span style={{ color: GREEN_TX }}>━</span>つなげる
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => { setShowPBL(true); setShowBack(false); }} style={{
               fontSize: 11.5, fontWeight: 900, cursor: "pointer", padding: "5px 13px", borderRadius: 13,
-              color: "#fff", background: stagesReached >= N ? "#E8A100" : AMBER_MAIN, border: "none",
-              boxShadow: stagesReached >= N ? "0 0 0 3px #FFE39A" : "0 2px 0 rgba(217,131,36,.3)",
-            }}>🛒 お買いもの大さくせん{stagesReached >= N ? " ✦" : ""}</button>
+              color: "#fff", background: "#7E54C4", border: "none",
+              boxShadow: "0 2px 0 rgba(126,84,196,.3)",
+            }}>🛒 お買いもの大さくせん</button>
+            <button onClick={() => { setShowBattle(true); setShowBack(false); }} style={{
+              fontSize: 11.5, fontWeight: 900, cursor: "pointer", padding: "5px 13px", borderRadius: 13,
+              color: "#fff", background: BATTLE_COLOR, border: "none", boxShadow: "0 2px 0 rgba(180,60,45,.3)",
+            }}>⚔️ モンスターバトル</button>
+            <button onClick={() => { setShowCipher(true); setShowBack(false); }} style={{
+              fontSize: 11.5, fontWeight: 900, cursor: "pointer", padding: "5px 13px", borderRadius: 13,
+              color: "#fff", background: DETECTIVE_COLOR, border: "none", boxShadow: "0 2px 0 rgba(50,65,120,.3)",
+            }}>🕵️ 暗号たんてい</button>
             <button onClick={() => { setShowBack((v) => !v); }} style={{
               fontSize: 11.5, fontWeight: 900, cursor: "pointer", padding: "5px 13px", borderRadius: 13,
               color: "#fff", background: GREEN, border: "none", boxShadow: "0 2px 0 rgba(63,169,140,.3)",
@@ -518,7 +526,7 @@ function App() {
                     <span style={{ width: 19, height: 19, borderRadius: "50%", background: isOpen ? "#fff" : BLUE, color: isOpen ? BLUE : "#fff", fontSize: 10.5, fontWeight: 900, display: "grid", placeItems: "center", flex: "none" }}>{s.n}</span>
                     <span style={{ fontSize: 11.5, fontWeight: 900, lineHeight: 1.0 }}>{s.title}<br /><span style={{ fontSize: 8.5, opacity: .85, fontWeight: 800 }}>{s.sub}</span></span>
                   </div>
-                  <div style={{ fontSize: 8, fontWeight: 800, color: isOpen ? "#cfe0ff" : (built ? GREEN : SUB), textAlign: "right", marginTop: 1 }}>{built ? "✓つくり込み" : "準備中"}</div>
+                  <div style={{ fontSize: 8, fontWeight: 800, color: isOpen ? "#cfe0ff" : (built ? GREEN : SUB), textAlign: "right", marginTop: 1 }}>{built ? "✓つかえる" : "じゅんび中"}</div>
                 </button>
               );
             })}
@@ -532,15 +540,15 @@ function App() {
                 return (
                   <div key={`${s.n}-${k}-${isDone ? 1 : 0}`} onClick={() => { setOpenStage(s.n); setOpenLv(k); }} style={{
                     position: "absolute", ...p, width: CW, height: CH - 6,
-                    background: isDone ? AMBER[k] : "#fff", border: `2px solid ${AMBER[k]}`,
-                    outline: isOpenCell ? `3px solid ${AMBER[k]}` : "none",
+                    background: isDone ? AMBER[k] : "#fff", border: `2px solid ${AMBER_DK[k]}`,
+                    outline: isOpenCell ? `3px solid ${AMBER_DK[k]}` : "none",
                     borderRadius: 7, cursor: "pointer", boxSizing: "border-box", display: "flex", alignItems: "center", gap: 2,
                     animation: isDone ? "cellPop .3s ease" : "none",
                   }}>
-                    <span style={{ width: 7, height: "100%", background: AMBER[k], borderRadius: "5px 0 0 5px", flex: "none" }} />
+                    <span style={{ width: 7, height: "100%", background: AMBER_DK[k], borderRadius: "5px 0 0 5px", flex: "none" }} />
                     <span style={{ fontSize: 12, flex: "none", marginLeft: 1 }}>{d.badge}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: 900, color: isDone ? "#fff" : AMBER[k], flex: 1, whiteSpace: "nowrap", overflow: "hidden", letterSpacing: "-0.3px" }}>{d.name}</span>
-                    <span style={{ fontSize: 8, fontWeight: 800, color: isDone ? "#fff" : AMBER[k], paddingRight: 4, flex: "none" }}>L{d.lv}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 900, color: isDone ? INK : AMBER_DK[k], flex: 1, whiteSpace: "nowrap", overflow: "hidden", letterSpacing: "-0.3px" }}>{d.name}</span>
+                    <span style={{ fontSize: 8, fontWeight: 800, color: isDone ? INK : AMBER_DK[k], paddingRight: 4, flex: "none" }}>L{d.lv}</span>
                   </div>
                 );
               })
@@ -610,8 +618,8 @@ function App() {
       {!showBack && showGuide && (
         <div key={`guide-${openStage}-${openLv}`} style={{ display: "flex", gap: 14, marginTop: 12, alignItems: "flex-start", flexWrap: "wrap", animation: "popUp .32s cubic-bezier(.2,.8,.2,1)" }}>
           {/* 左＝学習ガイド */}
-          <div style={{ flex: "1 1 420px", minWidth: 360, border: `2px solid ${plan.ready ? AMBER[openLv] : "#cdd8dd"}`, borderRadius: 14, background: "#fff", overflow: "hidden" }}>
-            <div style={{ background: plan.ready ? AMBER[openLv] : "#cdd8dd", color: "#fff", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: "1 1 420px", minWidth: 360, border: `2px solid ${plan.ready ? AMBER_DK[openLv] : "#cdd8dd"}`, borderRadius: 14, background: "#fff", overflow: "hidden" }}>
+            <div style={{ background: plan.ready ? AMBER_DK[openLv] : "#cdd8dd", color: "#fff", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 20 }}>{DEPTH[openLv].badge}</span>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 800, opacity: .9 }}>ステージ{st.n}「{st.title}{st.sub}」</div>
@@ -621,9 +629,101 @@ function App() {
 
             {(plan.ready) ? (
               <div style={{ padding: "11px 13px" }}>
-                {/* 達成条件 */}
-                <SectionTitle color={BLUE} icon="🎯" text="これが できたら クリア（達成条件）" />
-                <div style={{ fontSize: 13.5, fontWeight: 800, color: INK, background: "#F4F8FE", border: `1.5px solid ${BLUE}`, borderRadius: 9, padding: "9px 12px", lineHeight: 1.55 }}>{plan.goal}</div>
+                {/* 🎯 クリア条件（目立たせる） */}
+                <div style={{ borderRadius: 13, overflow: "hidden", border: `3px solid ${BLUE}`, boxShadow: "0 4px 0 rgba(46,145,168,.2)" }}>
+                  <div style={{ background: BLUE, color: "#fff", padding: "8px 13px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>🎯</span>
+                    <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: .5 }}>これが できたら クリア！</span>
+                  </div>
+                  <div style={{ padding: "12px 14px", background: "linear-gradient(180deg,#F4FBFD,#E8F5F8)" }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: INK, lineHeight: 1.55 }}>{plan.goal}</div>
+
+                    {/* Lv4＝探究・教材研究（くわしくは 下の 探究セクション） */}
+                    {openLv === 3 && (
+                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 800, color: AMBER_MAIN, lineHeight: 1.5 }}>↓ 先生・研究者に なって 探究しよう。研究を すすめて、友だちと お互いに 高め合えたら クリア！</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 📖 読むところ（読む Lv1 だけ） */}
+                {plan.kind === "read" && (
+                  <div style={{ marginTop: 12, border: `2.5px solid ${AMBER[0]}`, borderRadius: 13, overflow: "hidden" }}>
+                    <div style={{ background: AMBER[0], color: "#fff", padding: "8px 13px", display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 17 }}>📖</span>
+                      <span style={{ fontSize: 13.5, fontWeight: 900 }}>読むところ</span>
+                    </div>
+                    <div style={{ padding: "11px 13px" }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 900, color: INK }}>{plan.readPage}</div>
+                      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 900, color: "#fff", background: BLUE, borderRadius: 9, padding: "5px 11px" }}>① まず【問題】</span>
+                        <span style={{ fontSize: 16, fontWeight: 900, color: GRAY }}>→</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 900, color: "#fff", background: GREEN, borderRadius: 9, padding: "5px 11px" }}>② つぎに【まとめ】</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: SUB }}>の 順で 音読しよう</span>
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: SUB, lineHeight: 1.5 }}>【問題】で「何を するか」、【まとめ】で「大事な考え」を つかんでから、大事なことばに 線を引こう。</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 💡 説明ミッション（せつめい Lv3 だけ） */}
+                {plan.explain && (
+                  <div style={{ marginTop: 12, border: `2.5px solid ${AMBER[2]}`, borderRadius: 13, overflow: "hidden" }}>
+                    <div style={{ background: AMBER[2], color: "#fff", padding: "8px 13px", display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 17 }}>💡</span>
+                      <span style={{ fontSize: 13.5, fontWeight: 900 }}>せつめいミッション — 教科書の この問題を せつめいしよう</span>
+                    </div>
+                    <div style={{ padding: "12px 13px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 22, fontWeight: 900, color: INK, letterSpacing: 1 }}>{plan.explain.problem}</span>
+                        <span style={{ fontSize: 11.5, fontWeight: 800, color: "#fff", background: AMBER[2], borderRadius: 8, padding: "3px 9px" }}>{plan.explain.page}</span>
+                      </div>
+                      <div style={{ marginTop: 10, fontSize: 11, fontWeight: 900, color: AMBER[2] }}>🧠 中心の考え（ここを せつめいする）</div>
+                      <div style={{ marginTop: 4, fontSize: 12.5, fontWeight: 700, color: INK, background: "#fff", border: `1.5px dashed ${AMBER[2]}`, borderRadius: 9, padding: "9px 12px", lineHeight: 1.6 }}>{plan.explain.point}</div>
+                      <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: SUB, lineHeight: 1.5 }}>👉 答えを 出すだけで なく、<b>図とことば</b>で「<b>なぜ そう計算するのか</b>」を せつめいしよう。</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 🔭 探究タイム（高め合う Lv4 だけ） */}
+                {openLv === 3 && (
+                  <div style={{ marginTop: 12, border: `2.5px solid ${AMBER_MAIN}`, borderRadius: 13, overflow: "hidden" }}>
+                    <div style={{ background: AMBER_MAIN, color: "#fff", padding: "8px 13px", display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 17 }}>🔭</span>
+                      <span style={{ fontSize: 13.5, fontWeight: 900 }}>探究タイム — けんきゅうして 高め合おう</span>
+                    </div>
+                    <div style={{ padding: "12px 13px", background: "#FBF8FF" }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: AMBER_MAIN, marginBottom: 8 }}>🧪 けんきゅう活動（やってみたい ものから）</div>
+                      <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+                        {/* ① つまずきレスキュー隊（QNKS＋ミニ授業） */}
+                        <div style={{ flex: "1 1 100%", border: `2.5px solid ${MINI_COLOR}`, borderRadius: 12, background: "#FFF6EE", padding: "12px 13px" }}>
+                          <div style={{ fontSize: 15, fontWeight: 900, color: MINI_COLOR }}>🛟 つまずきレスキュー隊</div>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, marginTop: 4, lineHeight: 1.5 }}>みんなが「むずかしい！」と つまずく ところと その「なぜ」を 見つけて、<b style={{ color: MINI_COLOR }}>QNKS</b> で わかりやすく まとめよう。ミニ先生として 教えて、友だちを レスキュー！</div>
+                          <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {[["Q", "どこで つまずく？ なぜ？"], ["N", "大事なところを ぬき出す"], ["K", "わかりやすく 組み立てる"], ["S", "整理して 友だちに 教える"]].map(([q, txt], i) => (
+                              <div key={i} style={{ flex: "1 1 150px", display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: INK, background: "#fff", border: `1.3px solid ${MINI_COLOR}`, borderRadius: 8, padding: "6px 8px" }}>
+                                <span style={{ width: 18, height: 18, borderRadius: "50%", background: MINI_COLOR, color: "#fff", fontSize: 11, fontWeight: 900, display: "grid", placeItems: "center", flex: "none" }}>{q}</span>{txt}
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: 8, fontSize: 10, fontWeight: 700, color: MINI_COLOR, background: "#fff", border: `1.3px dashed ${MINI_COLOR}`, borderRadius: 8, padding: "6px 9px", lineHeight: 1.5 }}>💡 まとめは 画用紙や まとめシートに。友だちには 黒板や 口で せつめいしよう。</div>
+                        </div>
+                        {/* ② たし算・ひき算マップ */}
+                        <div style={{ flex: "1 1 230px", border: `2px solid ${GREEN}`, borderRadius: 11, background: "#F3FBF7", padding: "10px 12px" }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 900, color: GREEN_TX }}>🗺️ たし算・ひき算マップを つくる</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: SUB, marginTop: 4, lineHeight: 1.45 }}>この単元（<b style={{ color: GREEN_TX }}>たし算・ひき算の筆算</b>）の 考えを、矢印・図で 1まいの マップに まとめよう。</div>
+                          <div style={{ marginTop: 7, fontSize: 10, fontWeight: 700, color: GREEN_TX, background: "#fff", border: `1.3px dashed ${GREEN}`, borderRadius: 8, padding: "6px 9px", lineHeight: 1.5 }}>れい：くり上がりと くり下がりは どこが にてる？ ちがう？　「位をそろえる」は ぜんぶに 共通？　3けたと 4けたは？</div>
+                        </div>
+                        {/* ③ みんプリ作り */}
+                        <div style={{ flex: "1 1 230px", border: "2px solid #C0567E", borderRadius: 11, background: "#FCEEF4", padding: "10px 12px" }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 900, color: "#A33765" }}>📄 みんプリ作り</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: SUB, marginTop: 4, lineHeight: 1.45 }}>みんなの ための プリント「<b style={{ color: "#A33765" }}>みんプリ</b>」を 作ろう。自分で 問題を つくって、友だちに といて もらう。作ると いちばん 力が つく。</div>
+                          <div style={{ marginTop: 7, fontSize: 10, fontWeight: 700, color: "#A33765", background: "#fff", border: "1.3px dashed #C0567E", borderRadius: 8, padding: "6px 9px", lineHeight: 1.5 }}>れい：画用紙に 問題を 書いて、みんなで チャレンジ！　くり上がりが 2回 おきる たし算など。</div>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 10, fontSize: 10.5, fontWeight: 700, color: SUB }}>けんきゅうを すすめたら ↓の「<b style={{ color: AMBER_MAIN }}>できたら ぬる</b>」で マスに 色を つけよう！ お互いに 見せ合って 高め合おう。</div>
+                    </div>
+                  </div>
+                )}
 
                 {/* プリント運用フロー（せつめい） */}
                 {plan.flow && (
@@ -639,59 +739,28 @@ function App() {
                 </div>
 
                 {/* 問いかけサポート */}
-                <SectionTitle color={AMBER_MAIN} icon="💭" text="考えを ふかめる 問いかけ（自分に きいてみよう）" mt />
+                <SectionTitle color={AMBER_MAIN} icon="💭" text="考えを ふかめる しつもん（自分に きいてみよう）" mt />
                 <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   {plan.asks.map((q, i) => (
                     <div key={i} style={{ fontSize: 12.5, fontWeight: 700, color: INK, background: "#F3EDFB", borderLeft: `3px solid ${AMBER_MAIN}`, borderRadius: 6, padding: "6px 10px", lineHeight: 1.45 }}>{q}</div>
                   ))}
                 </div>
 
-                {/* バッジ＆クリア */}
+                {/* クリア（ぬる） */}
                 <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderTop: "1px dashed #d3dde1", paddingTop: 12 }}>
                   <button onClick={() => toggleDone(st.n, openLv)} style={{
                     flex: "1 1 200px", fontSize: 14, fontWeight: 900, cursor: "pointer",
-                    color: done[`${st.n}-${openLv}`] ? "#fff" : AMBER[openLv],
+                    color: done[`${st.n}-${openLv}`] ? INK : AMBER_DK[openLv],
                     background: done[`${st.n}-${openLv}`] ? AMBER[openLv] : "#fff",
-                    border: `2px solid ${AMBER[openLv]}`, borderRadius: 10, padding: "10px 0",
-                  }}>{done[`${st.n}-${openLv}`] ? `✓ ${DEPTH[openLv].badge} ${DEPTH[openLv].badgeName} バッジ ゲット！` : `できたら ぬる（${DEPTH[openLv].badge}${DEPTH[openLv].badgeName}）`}</button>
+                    border: `2px solid ${AMBER_DK[openLv]}`, borderRadius: 10, padding: "10px 0",
+                  }}>{done[`${st.n}-${openLv}`] ? `✓ ${DEPTH[openLv].badge} ${DEPTH[openLv].name} ぬれた！` : `できたら ぬる（${DEPTH[openLv].badge}${DEPTH[openLv].name}）`}</button>
                 </div>
 
-                {/* バッジ一覧（二層） */}
-                <div style={{ marginTop: 12 }}>
-                  <SectionTitle color={INK} icon="🏅" text="このステージの バッジ" />
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    {badgesByStage(st.n).map((b, k) => (
-                      <div key={k} style={{
-                        display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                        opacity: b.got ? 1 : 0.32, filter: b.got ? "none" : "grayscale(1)",
-                      }}>
-                        <div style={{ width: 42, height: 42, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 20, background: b.got ? AMBER[k] + "22" : "#eef2f4", border: `2px solid ${b.got ? AMBER[k] : "#cdd8dd"}` }}>{b.badge}</div>
-                        <span style={{ fontSize: 8.5, fontWeight: 800, color: b.got ? AMBER[k] : SUB }}>{b.badgeName}</span>
-                      </div>
-                    ))}
-                    <div style={{ marginLeft: 6, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                      <div style={{
-                        width: 46, height: 46, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 22,
-                        background: reached[st.n] ? "#FFF1C2" : "#eef2f4", border: `2.5px solid ${reached[st.n] ? "#E8A100" : "#cdd8dd"}`,
-                        opacity: reached[st.n] ? 1 : 0.5,
-                      }}>⭐</div>
-                      <span style={{ fontSize: 8.5, fontWeight: 900, color: reached[st.n] ? "#B47A00" : SUB }}>ステージ制覇</span>
-                    </div>
-                  </div>
-                  <button onClick={() => toggleReached(st.n)} style={{
-                    marginTop: 8, fontSize: 11.5, fontWeight: 900, cursor: "pointer",
-                    color: reached[st.n] ? "#fff" : readyToClear ? "#fff" : BLUE,
-                    background: reached[st.n] ? BLUE : readyToClear ? "#E8A100" : "#fff",
-                    border: `1.6px solid ${reached[st.n] ? BLUE : readyToClear ? "#E8A100" : BLUE}`,
-                    borderRadius: 11, padding: "5px 14px",
-                    animation: readyToClear ? "readyPulse 1.4s ease-in-out infinite" : "none",
-                  }}>{reached[st.n] ? "✓ ステージ制覇！" : readyToClear ? "✨ 4つ そろった！『ステージ制覇』する" : "4つ そろったら『ステージ制覇』"}</button>
-                </div>
               </div>
             ) : (
               <div style={{ padding: "26px 18px", textAlign: "center" }}>
                 <div style={{ fontSize: 30, marginBottom: 8 }}>🚧</div>
-                <div style={{ fontSize: 14, fontWeight: 900, color: SUB }}>このマスは 準備中です</div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: SUB }}>このマスは じゅんび中です</div>
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, marginTop: 6, lineHeight: 1.6 }}>
                   ほかの マスを タップして、できる ところから すすめてね。<br />
                   （先生へ：このマスの 内容は <b style={{ color: BLUE }}>PLAN</b> に <code>ready:true</code> で 追加できます）
@@ -705,27 +774,23 @@ function App() {
           <div style={{ flex: "1 1 320px", minWidth: 300, border: `2px solid ${AQUA}`, borderRadius: 14, background: "#fff", overflow: "hidden", alignSelf: "flex-start" }}>
             <div style={{ background: AQUA, color: "#fff", padding: "10px 14px" }}>
               <div style={{ fontSize: 11, fontWeight: 800, opacity: .9 }}>このマスで つかう</div>
-              <div style={{ fontSize: 16, fontWeight: 900 }}>📚 教材・リンク置き場</div>
+              <div style={{ fontSize: 16, fontWeight: 900 }}>📚 つかう どうぐ・リンク</div>
             </div>
             <div style={{ padding: "11px 13px" }}>
               {plan.ready ? (
                 <>
-                  <SectionTitle color={AQUA} icon="🔖" text={`このマス（${DEPTH[openLv].badge}${DEPTH[openLv].name}）の 教材`} />
+                  <SectionTitle color={AQUA} icon="🔖" text={`このマス（${DEPTH[openLv].badge}${DEPTH[openLv].name}）で つかう もの`} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {plan.links.map((l, i) => <LinkChip key={i} item={l} block />)}
                   </div>
                 </>
               ) : (
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, lineHeight: 1.6 }}>この マスは 準備中。下の 共通リンクは つかえます。</div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, lineHeight: 1.6 }}>この マスは じゅんび中。下の リンクは つかえます。</div>
               )}
 
-              <SectionTitle color={GREEN} icon="🟢" text="この単元の 共通リンク（いつでも）" mt />
+              <SectionTitle color={GREEN} icon="🟢" text="いつでも つかえる リンク" mt />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {COMMON_LINKS.map((l, i) => <LinkChip key={i} item={l} block />)}
-              </div>
-
-              <div style={{ marginTop: 12, fontSize: 10, fontWeight: 700, color: SUB, background: "#f3f8fa", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
-                💡 教科書ページ・計算ドリル番号・動画(NHK)などは、先生が あとで ここに はります（点線わくが あとで リンクに なります）。
               </div>
             </div>
           </div>
@@ -763,6 +828,11 @@ function App() {
                 <SectionTitle color={GREEN} icon="🧠" text="この先への つなぐ考え方" mt />
                 <div style={{ fontSize: 13, fontWeight: 800, color: "#1c5a45", background: "#F3FBF7", border: `1.5px solid ${GREEN}`, borderRadius: 9, padding: "9px 12px", lineHeight: 1.55 }}>{c.think}</div>
 
+                {c.concept && (<>
+                  <SectionTitle color={GREEN} icon="📘" text="くわしく（3年生にも わかる せつめい）" mt />
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, background: "#fff", border: `1.5px dashed ${GREEN}`, borderRadius: 9, padding: "9px 12px", lineHeight: 1.6 }}>{c.concept}</div>
+                </>)}
+
                 <SectionTitle color="#c0392b" icon="🎬" text="動画" mt />
                 {c.video
                   ? <a href={c.video.url} target="_blank" rel="noreferrer" style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#fff", background: "#c0392b", borderRadius: 9, padding: "10px 12px", textDecoration: "none", lineHeight: 1.4 }}>▶ {c.video.t}</a>
@@ -788,7 +858,7 @@ function App() {
                   return (
                     <div style={{ textAlign: "center", padding: "26px 0", color: SUB }}>
                       <div style={{ fontSize: 28, marginBottom: 8 }}>🛠️</div>
-                      <div style={{ fontSize: 12.5, fontWeight: 800 }}>この問題は 準備中です</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 800 }}>この問題は じゅんび中です</div>
                       <div style={{ fontSize: 11, fontWeight: 700, marginTop: 6 }}>いまは <b style={{ color: GREEN_TX }}>「小数のたし算」カード</b> で 無限問題が ためせます。</div>
                       <button onClick={() => setActiveCard("dec")} style={{ marginTop: 12, fontSize: 12, fontWeight: 900, cursor: "pointer", color: "#fff", background: GREEN, border: "none", borderRadius: 11, padding: "8px 16px" }}>小数のたし算を ためす →</button>
                     </div>
@@ -805,18 +875,17 @@ function App() {
         <PblShopping
           items={SHOP_ITEMS} budget={budget} setBudget={setBudget}
           cart={cart} setCart={setCart}
-          allClear={stagesReached >= N} stagesReached={stagesReached} N={N}
+          allClear={true} stagesReached={0} N={N}
           onClose={() => setShowPBL(false)}
         />
       )}
 
-      {/* 黄色の注記帯（ポンチ絵調） */}
-      <div style={{ marginTop: 12 }}>
-        <div style={{ background: NOTE_BG, border: `1.5px solid ${NOTE_BD}`, borderRadius: 10, padding: "9px 13px", fontSize: 10.5, fontWeight: 800, color: NOTE_INK, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>💾</span>
-          ぬったマスの 色は この タブレットに 自動で 保存されます（とじても のこる）。やり直すときは 右上の「リセット」。
-        </div>
-      </div>
+      {/* ===== PBL：モンスターバトル ===== */}
+      {showBattle && <MonsterBattle onClose={() => setShowBattle(false)} />}
+
+      {/* ===== PBL：暗号たんてい ===== */}
+      {showCipher && <CipherDetective onClose={() => setShowCipher(false)} />}
+
     </div>
   );
 }
@@ -879,6 +948,85 @@ function InfiniteDecimalAdd() {
 }
 const btnMain = (c) => ({ flex: 1, fontSize: 14, fontWeight: 900, cursor: "pointer", color: "#fff", background: c, border: "none", borderRadius: 10, padding: "11px 0" });
 
+/* ===== 無限：汎用クイズ（make()が {display, ans, ansText} を返す） ===== */
+function InfiniteQuiz({ make, hint, mode }) {
+  const [q, setQ] = useState(make);
+  const [val, setVal] = useState("");
+  const [judge, setJudge] = useState(null);
+  const [streak, setStreak] = useState(0);
+  const [count, setCount] = useState(0);
+  const inputRef = useRef(null);
+  const check = () => {
+    if (val.trim() === "") return;
+    const ok = Math.abs(parseFloat(val) - q.ans) < 1e-9;
+    setJudge(ok ? "ok" : "ng");
+    setCount((c) => c + 1);
+    setStreak((s) => (ok ? s + 1 : 0));
+  };
+  const next = () => { setQ(make()); setVal(""); setJudge(null); if (inputRef.current) inputRef.current.focus(); };
+  const onKey = (e) => { if (e.key === "Enter") { judge ? next() : check(); } };
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 800, color: SUB, marginBottom: 8 }}>
+        <span>れんぞく正かい：<b style={{ color: GREEN_TX }}>{streak}</b></span>
+        <span>といた数：{count}</span>
+      </div>
+      <div style={{ background: "#F3EDFB", border: `2px solid ${AMBER_MAIN}`, borderRadius: 12, padding: "16px 14px", textAlign: "center" }}>
+        <div style={{ fontSize: 25, fontWeight: 900, color: INK, letterSpacing: 1, lineHeight: 1.3 }}>{q.display}</div>
+        <input
+          ref={inputRef} value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={onKey}
+          inputMode={mode || "numeric"} placeholder="答え"
+          style={{ marginTop: 12, width: 130, fontSize: 22, fontWeight: 900, textAlign: "center", color: INK, border: `2px solid ${judge === "ok" ? GREEN : judge === "ng" ? "#D85A30" : "#cdd8dd"}`, borderRadius: 10, padding: "6px 8px", outline: "none" }}
+        />
+        {hint && <div style={{ marginTop: 8, fontSize: 10.5, fontWeight: 700, color: SUB }}>{hint}</div>}
+      </div>
+      {judge && (
+        <div style={{ marginTop: 10, textAlign: "center", fontSize: 15, fontWeight: 900, color: judge === "ok" ? GREEN : "#D85A30" }}>
+          {judge === "ok" ? "⭕ せいかい！" : `❌ おしい… 答えは ${q.ansText}`}
+        </div>
+      )}
+      <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+        {!judge
+          ? <button onClick={check} style={btnMain(AMBER_MAIN)}>こたえあわせ</button>
+          : <button onClick={next} style={btnMain(GREEN)}>つぎの問題 →</button>}
+      </div>
+    </div>
+  );
+}
+
+/* 大きい数：位（くらい）クイズ */
+const PLACE_NAMES = ["一", "十", "百", "千", "万", "十万"];
+function makeBigPlace() {
+  const digits = 4 + Math.floor(Math.random() * 3); // 4〜6けた
+  let s = String(Math.floor(Math.random() * 9) + 1);
+  for (let i = 1; i < digits; i++) s += String(Math.floor(Math.random() * 10));
+  const place = Math.floor(Math.random() * digits); // 0=一の位
+  const digit = Number(s[s.length - 1 - place]);
+  return { display: `${s} の「${PLACE_NAMES[place]}の位」の 数字は？`, ans: digit, ansText: String(digit) };
+}
+function InfiniteBigPlace() { return <InfiniteQuiz make={makeBigPlace} mode="numeric" hint="右から かぞえよう：一・十・百・千・万…" />; }
+
+/* かけ算：2けた×1けた */
+function makeMul() {
+  const a = Math.floor(Math.random() * 90) + 10; // 10〜99
+  const b = Math.floor(Math.random() * 8) + 2;   // 2〜9
+  return { display: `${a} × ${b} ＝`, ans: a * b, ansText: String(a * b) };
+}
+function InfiniteMul() { return <InfiniteQuiz make={makeMul} mode="numeric" hint="位ごとに 分けて：（一の位×）と（十の位×）を たす" />; }
+
+/* 整数：たし算・ひき算 ミックス */
+function makeIntMix() {
+  if (Math.random() < 0.5) {
+    const a = Math.floor(Math.random() * 900) + 100; // 100〜999
+    const b = Math.floor(Math.random() * 900) + 100;
+    return { display: `${a} ＋ ${b} ＝`, ans: a + b, ansText: String(a + b) };
+  }
+  let a = Math.floor(Math.random() * 900) + 100, b = Math.floor(Math.random() * 900) + 100;
+  if (b > a) { const t = a; a = b; b = t; }
+  return { display: `${a} − ${b} ＝`, ans: a - b, ansText: String(a - b) };
+}
+function InfiniteIntMix() { return <InfiniteQuiz make={makeIntMix} mode="numeric" hint="位をそろえて 一の位から 計算しよう" />; }
+
 /* ===== ∞チャレンジ問題：ジェネレータ登録制 =====
    新しい無限問題を 足すとき：
    ①上のように コンポーネントを作る（例：function InfiniteXxx(){...}）
@@ -887,6 +1035,9 @@ const btnMain = (c) => ({ flex: 1, fontSize: 14, fontWeight: 900, cursor: "point
    これだけで「つなげる」裏面の チャレンジ欄に つながる。 */
 const GENERATORS = {
   decimalAdd: InfiniteDecimalAdd,
+  bigPlace: InfiniteBigPlace,
+  mul2x1: InfiniteMul,
+  intMix: InfiniteIntMix,
 };
 
 /* ===== PBL：ショッピングモール ===== */
@@ -935,13 +1086,6 @@ function PblShopping({ items, budget, setBudget, cart, setCart, allClear, stages
           </div>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,.25)", color: "#fff", border: "none", borderRadius: 9, padding: "6px 14px", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>とじる ✕</button>
         </div>
-
-        {/* 解放前のヒント（未制覇でも遊べるが声かけ） */}
-        {!allClear && (
-          <div style={{ background: NOTE_BG, borderBottom: `1.5px solid ${NOTE_BD}`, color: NOTE_INK, padding: "8px 16px", fontSize: 11.5, fontWeight: 800 }}>
-            ✦ ステージを 全部すすめると 「達人モード」！ いまは {stagesReached}/{N} ステージ。れんしゅうとして 挑戦してみよう。
-          </div>
-        )}
 
         <div style={{ padding: "16px 18px" }}>
           {/* ミッション */}
@@ -1132,6 +1276,267 @@ function PblShopping({ items, budget, setBudget, cart, setCart, allClear, stages
     </div>
   );
 }
+/* ===== PBL：モンスターバトル（計算でたおす） ===== */
+const BATTLE_ATTACKS = [
+  { id: "fire", emoji: "🔥", name: "ファイア", dmg: 158 },
+  { id: "thunder", emoji: "⚡", name: "サンダー", dmg: 247 },
+  { id: "sword", emoji: "⚔️", name: "つるぎ", dmg: 326 },
+  { id: "ice", emoji: "❄️", name: "ブリザド", dmg: 189 },
+  { id: "star", emoji: "🌟", name: "スターライト", dmg: 275 },
+  { id: "rock", emoji: "🪨", name: "いわおとし", dmg: 134 },
+  { id: "wind", emoji: "🌪️", name: "トルネード", dmg: 212 },
+  { id: "punch", emoji: "👊", name: "パンチ", dmg: 96 },
+];
+const BATTLE_BOSSES = [
+  { emoji: "👾", name: "スライムキング", hp: 512 },
+  { emoji: "🐲", name: "ファイアドラゴン", hp: 1284 },
+  { emoji: "😈", name: "だいまおう", hp: 3050 },
+];
+const BATTLE_COLOR = "#D14B3D";
+
+function MonsterBattle({ onClose }) {
+  const [level, setLevel] = React.useState(0);
+  const [picked, setPicked] = React.useState({});
+  const [ansDmg, setAnsDmg] = React.useState("");
+  const [ansRem, setAnsRem] = React.useState("");
+  const [checked, setChecked] = React.useState(false);
+
+  const cleared = level >= BATTLE_BOSSES.length;
+  const boss = cleared ? null : BATTLE_BOSSES[level];
+  const lines = BATTLE_ATTACKS.filter((a) => picked[a.id]);
+  const dmg = lines.reduce((s, a) => s + a.dmg, 0);
+  const hp = boss ? boss.hp : 0;
+  const win = !!boss && dmg >= hp;
+  const rem = boss ? Math.max(0, hp - dmg) : 0;
+
+  const dmgOK = checked && parseInt(ansDmg, 10) === dmg;
+  const remOK = checked && parseInt(ansRem, 10) === rem;
+  const bothOK = dmgOK && remOK;
+  const reveal = checked;
+
+  const pickedKey = lines.map((l) => l.id).join(",");
+  React.useEffect(() => { setChecked(false); setAnsDmg(""); setAnsRem(""); }, [pickedKey, level]);
+
+  const toggle = (id) => setPicked((p) => { const x = { ...p }; if (x[id]) delete x[id]; else x[id] = true; return x; });
+  const nextBoss = () => { setLevel((l) => l + 1); setPicked({}); };
+  const restart = () => { setLevel(0); setPicked({}); };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,40,45,.45)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 18, overflow: "auto" }}>
+      <div style={{ width: "min(900px, 100%)", background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,.3)" }}>
+        <div style={{ background: `linear-gradient(180deg, #E0664F, ${BATTLE_COLOR})`, color: "#fff", padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 26 }}>⚔️</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, opacity: .92 }}>たし算・ひき算の筆算で たたかう PBL</div>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>モンスターバトル！（計算で たおす）</div>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,.25)", color: "#fff", border: "none", borderRadius: 9, padding: "6px 14px", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>とじる ✕</button>
+        </div>
+
+        <div style={{ padding: "16px 18px" }}>
+          {cleared ? (
+            <div style={{ textAlign: "center", padding: "26px 0" }}>
+              <div style={{ fontSize: 48 }}>🏆</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: BATTLE_COLOR, marginTop: 6 }}>ぜんぶの ボスを たおした！ ゆうしゃ たんじょう！</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: SUB, marginTop: 8 }}>たし算・ひき算の 力で せかいを すくったね。</div>
+              <button onClick={restart} style={{ marginTop: 16, fontSize: 14, fontWeight: 900, cursor: "pointer", color: "#fff", background: BATTLE_COLOR, border: "none", borderRadius: 11, padding: "11px 22px" }}>もう一回 たたかう</button>
+            </div>
+          ) : (
+            <>
+              <div style={{ background: "#FDEEEA", border: `2px solid ${BATTLE_COLOR}`, borderRadius: 12, padding: "11px 14px", marginBottom: 14, fontSize: 13, fontWeight: 700, color: INK, lineHeight: 1.6 }}>
+                🎯 こうげきを えらんで、ダメージの <b style={{ color: BATTLE_COLOR }}>合計（たし算）</b>が ボスのHP <b>いじょう</b>に なれば たおせる！ のこりHPは <b style={{ color: BLUE }}>ひき算</b>で もとめよう。
+              </div>
+
+              <div style={{ textAlign: "center", marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: SUB }}>だい{level + 1}ステージ の ボス</div>
+                <div style={{ fontSize: 54, lineHeight: 1 }}>{boss.emoji}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: INK, marginTop: 4 }}>{boss.name}</div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: BATTLE_COLOR, marginTop: 2 }}>HP {hp.toLocaleString()}</div>
+                <div style={{ maxWidth: 360, margin: "8px auto 0", height: 14, background: "#eee", borderRadius: 8, overflow: "hidden", border: "1px solid #ddd" }}>
+                  <div style={{ width: `${reveal ? Math.max(0, Math.round((rem / hp) * 100)) : 100}%`, height: "100%", background: win && reveal ? "#9aa6ac" : "#5BBE6A", transition: "width .5s" }} />
+                </div>
+                {reveal && <div style={{ fontSize: 12, fontWeight: 900, marginTop: 4, color: win ? BATTLE_COLOR : BLUE }}>{win ? "💥 HP 0！ たおした！" : `のこりHP ${rem.toLocaleString()}`}</div>}
+              </div>
+
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 360px", minWidth: 300 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: INK, marginBottom: 8 }}>🗡️ こうげきを えらぶ（タップ／もう一回で とりけし）</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+                    {BATTLE_ATTACKS.map((a) => (
+                      <button key={a.id} onClick={() => toggle(a.id)} style={{
+                        textAlign: "left", cursor: "pointer", background: picked[a.id] ? "#FDEEEA" : "#fff", border: `2px solid ${picked[a.id] ? BATTLE_COLOR : "#e0e8ea"}`,
+                        borderRadius: 11, padding: "9px 10px", position: "relative",
+                      }}>
+                        {picked[a.id] && <span style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: "50%", background: BATTLE_COLOR, color: "#fff", fontSize: 12, fontWeight: 900, display: "grid", placeItems: "center" }}>✓</span>}
+                        <div style={{ fontSize: 22 }}>{a.emoji}</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: INK, marginTop: 2 }}>{a.name}</div>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: BATTLE_COLOR, marginTop: 2 }}>{a.dmg} ダメージ</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ flex: "1 1 300px", minWidth: 280 }}>
+                  <div style={{ border: "2px solid #e0e8ea", borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
+                    <div style={{ background: "#FDEEEA", padding: "8px 12px", fontSize: 12, fontWeight: 900, color: INK }}>🗡️ えらんだ こうげき</div>
+                    <div style={{ padding: "8px 12px" }}>
+                      {lines.length === 0 && <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, padding: "10px 0", textAlign: "center" }}>こうげきを えらんでね</div>}
+                      {lines.map((l) => (
+                        <div key={l.id} onClick={() => toggle(l.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 4px", borderBottom: "1px dashed #e6edef", cursor: "pointer" }}>
+                          <span style={{ fontSize: 15 }}>{l.emoji}</span>
+                          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: INK }}>{l.name}</span>
+                          <span style={{ fontSize: 11.5, fontWeight: 900, color: BATTLE_COLOR }}>{l.dmg}</span>
+                        </div>
+                      ))}
+                      <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1.5px solid #e0e8ea" }}>
+                        <Row label="ボスの HP" value={`${hp.toLocaleString()}`} color={INK} />
+                        <Row label="合計ダメージ（たし算）" value={reveal ? `${dmg.toLocaleString()}` : "？"} color={reveal ? BATTLE_COLOR : SUB} />
+                        <Row label="のこりHP（ひき算）" value={reveal ? `${rem.toLocaleString()}` : "？"} color={reveal ? BLUE : SUB} big />
+                      </div>
+                    </div>
+                  </div>
+
+                  {lines.length > 0 && (
+                    <div style={{ border: `2px solid ${AMBER_MAIN}`, borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ background: AMBER_MAIN, color: "#fff", padding: "8px 12px", fontSize: 12.5, fontWeight: 900 }}>✍️ まず ノートで 計算 → 答え合わせ</div>
+                      <div style={{ padding: "11px 13px" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: SUB, lineHeight: 1.5, marginBottom: 8 }}>合計ダメージ（たし算）と のこりHP（HP − ダメージ）を ひっ算で。<b>ダメージが HPいじょうなら のこりは 0</b>（たおせた！）。</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <AnsField label="合計ダメージ" unit="" value={ansDmg} onChange={setAnsDmg} ok={checked ? dmgOK : null} />
+                          <AnsField label="のこりHP" unit="" value={ansRem} onChange={setAnsRem} ok={checked ? remOK : null} />
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
+                          {!checked
+                            ? <button onClick={() => setChecked(true)} disabled={ansDmg === "" || ansRem === ""} style={{ flex: 1, fontSize: 14, fontWeight: 900, cursor: (ansDmg === "" || ansRem === "") ? "not-allowed" : "pointer", color: "#fff", background: (ansDmg === "" || ansRem === "") ? "#c9d3d6" : AMBER_MAIN, border: "none", borderRadius: 10, padding: "10px 0" }}>答え合わせ</button>
+                            : <button onClick={() => { setChecked(false); setAnsDmg(""); setAnsRem(""); }} style={{ flex: 1, fontSize: 13, fontWeight: 900, cursor: "pointer", color: AMBER_MAIN, background: "#fff", border: `2px solid ${AMBER_MAIN}`, borderRadius: 10, padding: "9px 0" }}>もう一回 計算</button>}
+                        </div>
+                        {checked && (
+                          <div style={{ marginTop: 10, textAlign: "center", fontSize: 14, fontWeight: 900, color: bothOK ? GREEN : "#D85A30", background: bothOK ? "#EAF7F1" : "#FDEEE7", borderRadius: 9, padding: "9px" }}>
+                            {bothOK ? (win ? "⭕ せいかい！ ボスを たおした！" : `⭕ せいかい！ あと ${rem.toLocaleString()} ダメージ！`) : `${dmgOK ? "合計○" : "合計×"} ／ ${remOK ? "のこり○" : "のこり×"}　もう一回`}
+                          </div>
+                        )}
+                        {checked && bothOK && win && (
+                          <button onClick={nextBoss} style={{ marginTop: 10, width: "100%", fontSize: 14, fontWeight: 900, cursor: "pointer", color: "#fff", background: BATTLE_COLOR, border: "none", borderRadius: 10, padding: "11px 0" }}>{level + 1 < BATTLE_BOSSES.length ? "つぎの ボスへ →" : "さいごの ボスを たおした！ →"}</button>
+                        )}
+                        {checked && bothOK && !win && (
+                          <div style={{ marginTop: 9, fontSize: 11.5, fontWeight: 800, color: BATTLE_COLOR, textAlign: "center" }}>まだ たおせない！ こうげきを ふやそう 💪</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== PBL：暗号たんてい（筆算をといて 金庫をひらく） ===== */
+const DETECTIVE_COLOR = "#4A5BA6";
+function makeCipherCase() {
+  const R = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const a1 = R(100, 999), b1 = R(100, 999), ans1 = a1 + b1;
+  const a2 = R(300, 999), b2 = R(1, a2 - 100), ans2 = a2 - b2;
+  const a3 = R(100, 999), b3 = R(100, 999), ans3 = a3 + b3;
+  return [
+    { op: "＋", a: a1, b: b1, ans: ans1, place: "百の位", clue: Math.floor(ans1 / 100) % 10 },
+    { op: "−", a: a2, b: b2, ans: ans2, place: "十の位", clue: Math.floor(ans2 / 10) % 10 },
+    { op: "＋", a: a3, b: b3, ans: ans3, place: "一の位", clue: ans3 % 10 },
+  ];
+}
+function CipherDetective({ onClose }) {
+  const [cs, setCs] = React.useState(makeCipherCase);
+  const [inputs, setInputs] = React.useState(["", "", ""]);
+  const [solved, setSolved] = React.useState([false, false, false]);
+  const [judges, setJudges] = React.useState([null, null, null]);
+  const allSolved = solved.every(Boolean);
+
+  const setInput = (i, v) => setInputs((a) => { const x = [...a]; x[i] = v; return x; });
+  const check = (i) => {
+    if (inputs[i].trim() === "") return;
+    const ok = parseInt(inputs[i], 10) === cs[i].ans;
+    setJudges((a) => { const x = [...a]; x[i] = ok ? "ok" : "ng"; return x; });
+    if (ok) setSolved((a) => { const x = [...a]; x[i] = true; return x; });
+  };
+  const nextCase = () => { setCs(makeCipherCase()); setInputs(["", "", ""]); setSolved([false, false, false]); setJudges([null, null, null]); };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,40,45,.45)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 18, overflow: "auto" }}>
+      <div style={{ width: "min(900px, 100%)", background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,.3)" }}>
+        <div style={{ background: `linear-gradient(180deg, #5E6FBE, ${DETECTIVE_COLOR})`, color: "#fff", padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 26 }}>🕵️</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, opacity: .92 }}>筆算で あんごうを とく PBL（位を よみとれ！）</div>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>暗号たんてい — きんこを ひらけ！</div>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,.25)", color: "#fff", border: "none", borderRadius: 9, padding: "6px 14px", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>とじる ✕</button>
+        </div>
+
+        <div style={{ padding: "16px 18px" }}>
+          <div style={{ background: "#EEF0FA", border: `2px solid ${DETECTIVE_COLOR}`, borderRadius: 12, padding: "11px 14px", marginBottom: 14, fontSize: 13, fontWeight: 700, color: INK, lineHeight: 1.6 }}>
+            🎯 3つの 筆算を とこう。答えの <b style={{ color: DETECTIVE_COLOR }}>指定された位（くらい）の数字</b>が、金庫の あんごうに なるよ。3つ そろえば 金庫が ひらく！
+          </div>
+
+          {/* 金庫 */}
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 44, lineHeight: 1 }}>{allSolved ? "🔓" : "🔒"}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: SUB, marginTop: 2 }}>きんこの あんごう</div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 6 }}>
+              {cs.map((p, i) => (
+                <div key={i} style={{ width: 52, height: 60, borderRadius: 10, border: `3px solid ${solved[i] ? DETECTIVE_COLOR : "#cdd8dd"}`, background: solved[i] ? "#EEF0FA" : "#fff", display: "grid", placeItems: "center", fontSize: 30, fontWeight: 900, color: solved[i] ? DETECTIVE_COLOR : "#cdd8dd" }}>
+                  {solved[i] ? p.clue : "?"}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 3つの じけん */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {cs.map((p, i) => {
+              const j = judges[i];
+              return (
+                <div key={i} style={{ border: `2px solid ${solved[i] ? GREEN : "#e0e8ea"}`, borderRadius: 12, padding: "11px 13px", background: solved[i] ? "#EAF7F1" : "#fff" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, fontWeight: 900, color: "#fff", background: DETECTIVE_COLOR, borderRadius: 8, padding: "2px 9px" }}>じけん {i + 1}</span>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: INK, letterSpacing: 1 }}>{p.a} {p.op} {p.b} ＝</span>
+                    {!solved[i] ? (
+                      <>
+                        <input value={inputs[i]} onChange={(e) => setInput(i, e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") check(i); }} inputMode="numeric" placeholder="答え"
+                          style={{ width: 100, fontSize: 20, fontWeight: 900, textAlign: "center", color: INK, border: `2px solid ${j === "ng" ? "#D85A30" : "#cdd8dd"}`, borderRadius: 9, padding: "5px 6px", outline: "none" }} />
+                        <button onClick={() => check(i)} style={{ fontSize: 13, fontWeight: 900, cursor: "pointer", color: "#fff", background: DETECTIVE_COLOR, border: "none", borderRadius: 9, padding: "8px 14px" }}>たしかめ</button>
+                        {j === "ng" && <span style={{ fontSize: 13, fontWeight: 900, color: "#D85A30" }}>❌ もう一回</span>}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 15, fontWeight: 900, color: GREEN }}>✓ {p.ans}　→ 【{p.place}】は <b style={{ color: DETECTIVE_COLOR }}>{p.clue}</b>！</span>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 11, fontWeight: 800, color: solved[i] ? GREEN_TX : SUB }}>🔎 答えの【{p.place}】の 数字が、あんごうの {i + 1}番目</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {allSolved && (
+            <div style={{ marginTop: 16, textAlign: "center", border: `2px solid ${DETECTIVE_COLOR}`, borderRadius: 14, padding: "16px 14px", background: "#EEF0FA" }}>
+              <div style={{ fontSize: 40 }}>🔓🎁</div>
+              <div style={{ fontSize: 19, fontWeight: 900, color: DETECTIVE_COLOR, marginTop: 4 }}>あんごう「{cs.map((p) => p.clue).join("")}」で 金庫が ひらいた！</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: SUB, marginTop: 6 }}>名たんてい！ つぎの じけんに ちょうせんしよう。</div>
+              <button onClick={nextCase} style={{ marginTop: 14, fontSize: 14, fontWeight: 900, cursor: "pointer", color: "#fff", background: DETECTIVE_COLOR, border: "none", borderRadius: 11, padding: "11px 24px" }}>つぎの じけん →</button>
+            </div>
+          )}
+
+          <div style={{ marginTop: 14, fontSize: 10.5, fontWeight: 700, color: SUB, background: "#f3f8fa", borderRadius: 8, padding: "8px 11px", lineHeight: 1.5 }}>
+            💡 「百の位・十の位・一の位」を まちがえないように、ひっ算は 位をそろえて。位を よみとる力が たんていの ぶきだ！
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AnsField({ label, unit, value, onChange, ok }) {
   const border = ok === null ? "#cdd8dd" : ok ? GREEN : "#D85A30";
   return (
@@ -1152,6 +1557,10 @@ function Row({ label, value, color, big }) {
     </div>
   );
 }
+
+/* 「つまずきレスキュー隊」カードの色（旧ミニ授業ボード由来の名残） */
+const MINI_COLOR = "#E8731C";
+
 
 /* ===== 小物 ===== */
 function LinkChip({ item, block }) {
