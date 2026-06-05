@@ -1073,7 +1073,7 @@ function PblShopping({ items, budget, setBudget, cart, setCart, allClear, stages
   // 選んだ品が変わったら 答え合わせを リセット
   const cartKey = lines.map((l) => l.id).join(",");
   React.useEffect(() => { setChecked(false); setAnsTotal(""); setAnsRest(""); }, [cartKey, budget]);
-  const reveal = checked; // 確認するまで 合計・残りは隠す
+  const reveal = checked && bothOK; // 正解したときだけ 合計・残りを見せる（まちがいで答えを写せないように）
   // 採点：予算内で、残りが少ないほど高評価
   const usedRate = budget > 0 ? total / budget : 0;
   let stars = 0, rank = "—";
@@ -1300,6 +1300,13 @@ const BATTLE_ATTACKS = [
   { id: "rock", emoji: "🪨", name: "いわおとし", dmg: 134 },
   { id: "wind", emoji: "🌪️", name: "トルネード", dmg: 212 },
   { id: "punch", emoji: "👊", name: "パンチ", dmg: 96 },
+  { id: "dragon", emoji: "🐉", name: "ドラゴンブレス", dmg: 458 },
+  { id: "meteor", emoji: "🌋", name: "メテオ", dmg: 512 },
+  { id: "boom", emoji: "💥", name: "ばくはつ", dmg: 364 },
+  { id: "tsunami", emoji: "🌊", name: "つなみ", dmg: 293 },
+  { id: "light", emoji: "✨", name: "ひかりのやいば", dmg: 421 },
+  { id: "trident", emoji: "🔱", name: "トライデント", dmg: 256 },
+  { id: "freeze", emoji: "🧊", name: "ぜったいれいど", dmg: 333 },
 ];
 const BATTLE_BOSSES = [
   { emoji: "👾", name: "スライムキング", hp: 512 },
@@ -1309,7 +1316,10 @@ const BATTLE_BOSSES = [
 const BATTLE_COLOR = "#D14B3D";
 
 function MonsterBattle({ onClose }) {
+  const MAX_PER_TURN = 3;
   const [level, setLevel] = React.useState(0);
+  const [currentHP, setCurrentHP] = React.useState(BATTLE_BOSSES[0].hp);
+  const [turn, setTurn] = React.useState(1);
   const [picked, setPicked] = React.useState({});
   const [ansDmg, setAnsDmg] = React.useState("");
   const [ansRem, setAnsRem] = React.useState("");
@@ -1317,23 +1327,25 @@ function MonsterBattle({ onClose }) {
 
   const cleared = level >= BATTLE_BOSSES.length;
   const boss = cleared ? null : BATTLE_BOSSES[level];
+  const hp0 = boss ? boss.hp : 0;
   const lines = BATTLE_ATTACKS.filter((a) => picked[a.id]);
-  const dmg = lines.reduce((s, a) => s + a.dmg, 0);
-  const hp = boss ? boss.hp : 0;
-  const win = !!boss && dmg >= hp;
-  const rem = boss ? Math.max(0, hp - dmg) : 0;
+  const dmg = lines.reduce((s, a) => s + a.dmg, 0);          // このターンの ダメージ合計
+  const rem = Math.max(0, currentHP - dmg);                   // このターン後の のこりHP
+  const win = !!boss && currentHP - dmg <= 0;
+  const atCap = Object.keys(picked).length >= MAX_PER_TURN;
 
   const dmgOK = checked && parseInt(ansDmg, 10) === dmg;
   const remOK = checked && parseInt(ansRem, 10) === rem;
   const bothOK = dmgOK && remOK;
-  const reveal = checked;
+  const reveal = checked && bothOK; // 正解したときだけ 数を見せる（まちがいで答えを写せないように）
 
   const pickedKey = lines.map((l) => l.id).join(",");
-  React.useEffect(() => { setChecked(false); setAnsDmg(""); setAnsRem(""); }, [pickedKey, level]);
+  React.useEffect(() => { setChecked(false); setAnsDmg(""); setAnsRem(""); }, [pickedKey, level, turn]);
 
-  const toggle = (id) => setPicked((p) => { const x = { ...p }; if (x[id]) delete x[id]; else x[id] = true; return x; });
-  const nextBoss = () => { setLevel((l) => l + 1); setPicked({}); };
-  const restart = () => { setLevel(0); setPicked({}); };
+  const toggle = (id) => setPicked((p) => { const x = { ...p }; if (x[id]) { delete x[id]; } else { if (Object.keys(p).length >= MAX_PER_TURN) return p; x[id] = true; } return x; });
+  const doAttack = () => { setCurrentHP(rem); setTurn((t) => t + 1); setPicked({}); };
+  const nextBoss = () => { const nl = level + 1; setLevel(nl); setPicked({}); setTurn(1); setCurrentHP(nl < BATTLE_BOSSES.length ? BATTLE_BOSSES[nl].hp : 0); };
+  const restart = () => { setLevel(0); setCurrentHP(BATTLE_BOSSES[0].hp); setTurn(1); setPicked({}); };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,40,45,.45)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 18, overflow: "auto" }}>
@@ -1358,27 +1370,27 @@ function MonsterBattle({ onClose }) {
           ) : (
             <>
               <div style={{ background: "#FDEEEA", border: `2px solid ${BATTLE_COLOR}`, borderRadius: 12, padding: "11px 14px", marginBottom: 14, fontSize: 13, fontWeight: 700, color: INK, lineHeight: 1.6 }}>
-                🎯 こうげきを えらんで、ダメージの <b style={{ color: BATTLE_COLOR }}>合計（たし算）</b>が ボスのHP <b>いじょう</b>に なれば たおせる！ のこりHPは <b style={{ color: BLUE }}>ひき算</b>で もとめよう。
+                🎯 毎ターン こうげきを えらんで（1ターンに <b>{MAX_PER_TURN}つ</b>まで）、<b style={{ color: BLUE }}>いまのHP − ダメージ</b>（ひき算）を 計算！ HPが <b>0</b>に なるまで くり返して たおそう。
               </div>
 
               <div style={{ textAlign: "center", marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: SUB }}>だい{level + 1}ステージ の ボス</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: SUB }}>だい{level + 1}ステージ の ボス　／　<b style={{ color: BATTLE_COLOR }}>ターン {turn}</b></div>
                 <div style={{ fontSize: 54, lineHeight: 1 }}>{boss.emoji}</div>
                 <div style={{ fontSize: 18, fontWeight: 900, color: INK, marginTop: 4 }}>{boss.name}</div>
-                <div style={{ fontSize: 14, fontWeight: 900, color: BATTLE_COLOR, marginTop: 2 }}>HP {hp.toLocaleString()}</div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: BATTLE_COLOR, marginTop: 2 }}>いまの HP {currentHP.toLocaleString()}　<span style={{ fontSize: 11, color: SUB }}>（さいしょ {hp0.toLocaleString()}）</span></div>
                 <div style={{ maxWidth: 360, margin: "8px auto 0", height: 14, background: "#eee", borderRadius: 8, overflow: "hidden", border: "1px solid #ddd" }}>
-                  <div style={{ width: `${reveal ? Math.max(0, Math.round((rem / hp) * 100)) : 100}%`, height: "100%", background: win && reveal ? "#9aa6ac" : "#5BBE6A", transition: "width .5s" }} />
+                  <div style={{ width: `${Math.max(0, Math.round(((reveal ? rem : currentHP) / hp0) * 100))}%`, height: "100%", background: win && reveal ? "#9aa6ac" : "#5BBE6A", transition: "width .5s" }} />
                 </div>
-                {reveal && <div style={{ fontSize: 12, fontWeight: 900, marginTop: 4, color: win ? BATTLE_COLOR : BLUE }}>{win ? "💥 HP 0！ たおした！" : `のこりHP ${rem.toLocaleString()}`}</div>}
+                {reveal && <div style={{ fontSize: 12.5, fontWeight: 900, marginTop: 4, color: win ? BATTLE_COLOR : BLUE }}>{win ? "💥 HP 0！ たおした！" : `${currentHP.toLocaleString()} − ${dmg.toLocaleString()} ＝ のこりHP ${rem.toLocaleString()}`}</div>}
               </div>
 
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 360px", minWidth: 300 }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: INK, marginBottom: 8 }}>🗡️ こうげきを えらぶ（タップ／もう一回で とりけし）</div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: INK, marginBottom: 8 }}>🗡️ こうげきを えらぶ（1ターンに {MAX_PER_TURN}つまで／タップで とりけし）</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
                     {BATTLE_ATTACKS.map((a) => (
-                      <button key={a.id} onClick={() => toggle(a.id)} style={{
-                        textAlign: "left", cursor: "pointer", background: picked[a.id] ? "#FDEEEA" : "#fff", border: `2px solid ${picked[a.id] ? BATTLE_COLOR : "#e0e8ea"}`,
+                      <button key={a.id} onClick={() => toggle(a.id)} disabled={atCap && !picked[a.id]} style={{
+                        textAlign: "left", cursor: (atCap && !picked[a.id]) ? "not-allowed" : "pointer", opacity: (atCap && !picked[a.id]) ? 0.38 : 1, background: picked[a.id] ? "#FDEEEA" : "#fff", border: `2px solid ${picked[a.id] ? BATTLE_COLOR : "#e0e8ea"}`,
                         borderRadius: 11, padding: "9px 10px", position: "relative",
                       }}>
                         {picked[a.id] && <span style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: "50%", background: BATTLE_COLOR, color: "#fff", fontSize: 12, fontWeight: 900, display: "grid", placeItems: "center" }}>✓</span>}
@@ -1403,8 +1415,8 @@ function MonsterBattle({ onClose }) {
                         </div>
                       ))}
                       <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1.5px solid #e0e8ea" }}>
-                        <Row label="ボスの HP" value={`${hp.toLocaleString()}`} color={INK} />
-                        <Row label="合計ダメージ（たし算）" value={reveal ? `${dmg.toLocaleString()}` : "？"} color={reveal ? BATTLE_COLOR : SUB} />
+                        <Row label="いまの ボスHP" value={`${currentHP.toLocaleString()}`} color={INK} />
+                        <Row label="ターンの ダメージ（たし算）" value={reveal ? `${dmg.toLocaleString()}` : "？"} color={reveal ? BATTLE_COLOR : SUB} />
                         <Row label="のこりHP（ひき算）" value={reveal ? `${rem.toLocaleString()}` : "？"} color={reveal ? BLUE : SUB} big />
                       </div>
                     </div>
@@ -1414,7 +1426,7 @@ function MonsterBattle({ onClose }) {
                     <div style={{ border: `2px solid ${AMBER_MAIN}`, borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ background: AMBER_MAIN, color: "#fff", padding: "8px 12px", fontSize: 12.5, fontWeight: 900 }}>✍️ まず ノートで 計算 → 答え合わせ</div>
                       <div style={{ padding: "11px 13px" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: SUB, lineHeight: 1.5, marginBottom: 8 }}>合計ダメージ（たし算）と のこりHP（HP − ダメージ）を ひっ算で。<b>ダメージが HPいじょうなら のこりは 0</b>（たおせた！）。</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: SUB, lineHeight: 1.5, marginBottom: 8 }}>ターンの ダメージ（たし算）と <b>のこりHP ＝ いまのHP − ダメージ</b>（ひき算）を ひっ算で。<b>ダメージが いまのHPいじょうなら のこりは 0</b>（たおせた！）。</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <AnsField label="合計ダメージ" unit="" value={ansDmg} onChange={setAnsDmg} ok={checked ? dmgOK : null} />
                           <AnsField label="のこりHP" unit="" value={ansRem} onChange={setAnsRem} ok={checked ? remOK : null} />
@@ -1426,14 +1438,14 @@ function MonsterBattle({ onClose }) {
                         </div>
                         {checked && (
                           <div style={{ marginTop: 10, textAlign: "center", fontSize: 14, fontWeight: 900, color: bothOK ? GREEN : "#D85A30", background: bothOK ? "#EAF7F1" : "#FDEEE7", borderRadius: 9, padding: "9px" }}>
-                            {bothOK ? (win ? "⭕ せいかい！ ボスを たおした！" : `⭕ せいかい！ あと ${rem.toLocaleString()} ダメージ！`) : `${dmgOK ? "合計○" : "合計×"} ／ ${remOK ? "のこり○" : "のこり×"}　もう一回`}
+                            {bothOK ? (win ? "⭕ せいかい！ ボスを たおした！" : `⭕ せいかい！ HP ${currentHP.toLocaleString()} → ${rem.toLocaleString()}！`) : `${dmgOK ? "ダメージ○" : "ダメージ×"} ／ ${remOK ? "のこり○" : "のこり×"}　もう一回`}
                           </div>
                         )}
                         {checked && bothOK && win && (
                           <button onClick={nextBoss} style={{ marginTop: 10, width: "100%", fontSize: 14, fontWeight: 900, cursor: "pointer", color: "#fff", background: BATTLE_COLOR, border: "none", borderRadius: 10, padding: "11px 0" }}>{level + 1 < BATTLE_BOSSES.length ? "つぎの ボスへ →" : "さいごの ボスを たおした！ →"}</button>
                         )}
                         {checked && bothOK && !win && (
-                          <div style={{ marginTop: 9, fontSize: 11.5, fontWeight: 800, color: BATTLE_COLOR, textAlign: "center" }}>まだ たおせない！ こうげきを ふやそう 💪</div>
+                          <button onClick={doAttack} style={{ marginTop: 10, width: "100%", fontSize: 14, fontWeight: 900, cursor: "pointer", color: "#fff", background: BATTLE_COLOR, border: "none", borderRadius: 10, padding: "11px 0" }}>▶ こうげき！（つぎの ターンへ）</button>
                         )}
                       </div>
                     </div>
