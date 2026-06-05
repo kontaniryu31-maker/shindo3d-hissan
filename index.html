@@ -142,7 +142,7 @@ const PLAN = {
       teacher: ["大事な語に 自分で 線を引けているか", "用語を 自分のことばで 言いかえられるか"],
       links: [{ t: "教科書", url: null }],
     },
-    1: { ready: true, kind: "use",
+    1: { ready: true, kind: "use", page: "教科書 上 p.44〜46", drill: "計算ドリル 19・20",
       goal: "365+457・478+256 など くり上がりの たし算が ひっ算で 正しく できる。",
       prep: ["教科書", "計算ドリル 19・20", "ノート"],
       asks: ["一の位から 計算した？", "くり上がりの 小さい1を 書いた？", "答えの 位は そろっている？", "まちがえやすいのは どこ？ なぜ そう思う？"],
@@ -175,7 +175,7 @@ const PLAN = {
       teacher: ["大事な語に 線を引けているか", "用語を 自分のことばで 言えるか"],
       links: [{ t: "教科書", url: null }],
     },
-    1: { ready: true, kind: "use",
+    1: { ready: true, kind: "use", page: "教科書 上 p.47〜49", drill: "計算ドリル 21",
       goal: "512−348・623−159 など くり下がりの ひき算が ひっ算で 正しく できる。",
       prep: ["教科書", "計算ドリル 21", "ノート"],
       asks: ["一の位から 計算した？", "ひけない時 上から 10を かりた？", "かりたら 上の位は 1 へった？", "まちがえやすいのは どこ？ どう 気をつける？"],
@@ -208,7 +208,7 @@ const PLAN = {
       teacher: ["大事な語に 線を引けているか", "用語を 自分のことばで 言えるか"],
       links: [{ t: "教科書", url: null }],
     },
-    1: { ready: true, kind: "use",
+    1: { ready: true, kind: "use", page: "教科書 上 p.48〜49", drill: "計算ドリル 22",
       goal: "402−175・1000−268 など 0をこえる くり下がりが 正しく できる。",
       prep: ["教科書", "計算ドリル 22", "ノート"],
       asks: ["十の位が 0の時 どこから かりた？", "百→十→一へ じゅんに わたせた？", "答えの たしかめは した？", "いちばん むずかしいのは どこ？ なぜ？"],
@@ -241,7 +241,7 @@ const PLAN = {
       teacher: ["大事な語に 線を引けているか", "「同じやり方」に 気づいているか"],
       links: [{ t: "教科書", url: null }],
     },
-    1: { ready: true, kind: "use",
+    1: { ready: true, kind: "use", page: "教科書 上 p.50〜51", drill: "計算ドリル 23",
       goal: "2456+3897・5208−1639 など 4けたの たし算・ひき算が 正しく できる。",
       prep: ["教科書", "計算ドリル 23", "ノート"],
       asks: ["一の位から 順に 計算した？", "くり上がり・くり下がりは 正しい？", "けたが ふえても 同じだった？", "3けたと くらべて どこが 同じ？ なぜ そう言える？"],
@@ -274,7 +274,7 @@ const PLAN = {
       teacher: ["大事な語に 線を引けているか", "たし算とひき算の関係に 気づいているか"],
       links: [{ t: "教科書", url: null }],
     },
-    1: { ready: true, kind: "use",
+    1: { ready: true, kind: "use", page: "教科書 上 p.52〜53", drill: "計算ドリル 24・25",
       goal: "答えを ぎゃくの計算で たしかめる（たしかめ算）が できる。",
       prep: ["教科書", "計算ドリル 24（たしかめテスト）", "ノート"],
       asks: ["ひき算の 答えは どう たしかめる？", "たし算の 答えは どう たしかめる？", "たしかめて 合っていた？", "たしかめが 役に立つのは どんな時？ なぜ？"],
@@ -637,6 +637,20 @@ function App() {
                   </div>
                   <div style={{ padding: "12px 14px", background: "linear-gradient(180deg,#F4FBFD,#E8F5F8)" }}>
                     <div style={{ fontSize: 14.5, fontWeight: 800, color: INK, lineHeight: 1.55 }}>{plan.goal}</div>
+
+                    {/* 📍 ここでやる：教科書ページ／計算ドリル */}
+                    {(() => {
+                      const refPage = plan.page || plan.readPage || (plan.explain && plan.explain.page);
+                      const refDrill = plan.drill;
+                      if (!refPage && !refDrill) return null;
+                      return (
+                        <div style={{ marginTop: 9, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 900, color: SUB }}>📍 ここで やる：</span>
+                          {refPage && <span style={{ fontSize: 12, fontWeight: 900, color: "#fff", background: BLUE, borderRadius: 9, padding: "4px 11px" }}>📖 {refPage}</span>}
+                          {refDrill && <span style={{ fontSize: 12, fontWeight: 900, color: "#fff", background: GREEN, borderRadius: 9, padding: "4px 11px" }}>📒 {refDrill}</span>}
+                        </div>
+                      );
+                    })()}
 
                     {/* Lv4＝探究・教材研究（くわしくは 下の 探究セクション） */}
                     {openLv === 3 && (
